@@ -1,0 +1,10 @@
+{
+  "name": "pacer",
+  "version": "1.0.0",
+  "description": "Plano de prova de corrida a partir do relevo do percurso",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": "20.x"
+  }
+}

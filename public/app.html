@@ -1,0 +1,1593 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1116">
+<script>try{var t=localStorage.getItem('pacer-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<title>Pacer — seu plano de prova</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --bg:#0E1116; --panel:#171B22; --panel-2:#1E232C; --line:#2A313C;
+    --ink:#F2F0EB; --ink-soft:#9AA3B0; --ink-dim:#646D7B;
+    --up:#FF5C49; --up-soft:#3A2320; --down:#3FB6C9; --flat:#8A93A1;
+    --accent:#FFD23F; --grid:#222932;
+  }
+  [data-theme="light"]{
+    --bg:#F5F3ED; --panel:#FFFFFF; --panel-2:#EFECE3; --line:#E0DBCF;
+    --ink:#191C22; --ink-soft:#586070; --ink-dim:#8A92A0;
+    --up:#D8412E; --up-soft:#FBE2DD; --down:#1A8DA1; --flat:#8A93A1;
+    --accent:#B5830A; --grid:#E6E2D8;
+  }
+  html{transition:background .25s,color .25s}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:30px 18px 80px}
+  .mono{font-family:'Space Mono',monospace}
+
+  header{display:flex;align-items:center;gap:13px;margin-bottom:5px}
+  .mark{width:34px;height:34px;flex:none;position:relative}
+  .logo{font-family:'Archivo';font-weight:900;font-size:30px;letter-spacing:-.03em;line-height:1}
+  .logo b{color:var(--accent)}
+  header .mark path{stroke-dasharray:64;stroke-dashoffset:64;animation:drawLogo 1.1s ease forwards .15s}
+  header .mark circle{opacity:0;animation:fadeIn .5s ease forwards 1s}
+  @keyframes drawLogo{to{stroke-dashoffset:0}}
+  .tag{font-family:'Space Mono';font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-dim);margin-left:auto;text-align:right;line-height:1.4}
+  .today{font-family:'Space Mono';font-size:11.5px;letter-spacing:.06em;color:var(--ink-dim);margin:14px 0 0}
+  .greet{font-family:'Archivo';font-weight:800;font-size:19px;letter-spacing:-.01em;margin:4px 0 0;color:var(--ink)}
+  .greet b{color:var(--accent)}
+  .sub{color:var(--ink-soft);font-size:14px;max-width:560px;margin:8px 0 24px;line-height:1.55}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px}
+  .pad{padding:20px}
+  .grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}}
+
+  .label{font-family:'Archivo';font-weight:700;font-size:14px;margin:0 0 3px}
+  .hint{color:var(--ink-soft);font-size:12.5px;margin:0 0 12px;line-height:1.4}
+
+  /* map */
+  #map{width:100%;height:300px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line);cursor:crosshair}
+  /* deixa os tiles do OpenStreetMap com cara dark, combinando com a identidade */
+  #map .leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9)}
+  #map .leaflet-control-attribution{background:rgba(14,17,22,.7);color:var(--ink-dim)}
+  #map .leaflet-control-attribution a{color:var(--ink-soft)}
+  #map .leaflet-bar a{background:var(--panel-2);color:var(--ink);border-color:var(--line)}
+  .route-dot{background:#FFD23F;border:2px solid #0E1116;border-radius:50%;
+    box-shadow:0 1px 5px rgba(0,0,0,.45);cursor:grab}
+  .route-dot:active{cursor:grabbing;transform:scale(1.15)}
+  .map-msg{height:300px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line);
+    display:grid;place-items:center;text-align:center;color:var(--ink-dim);font-size:13px;padding:20px}
+  .map-search{display:flex;gap:8px;margin-bottom:10px}
+  .map-search input{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+    padding:10px 12px;color:var(--ink);font-family:'Inter';font-size:14px}
+  .map-search input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .map-tools{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
+  .route-info{font-family:'Space Mono';font-size:12px;color:var(--ink-soft);margin-left:auto}
+  .route-info b{color:var(--accent)}
+
+  .field{margin-top:14px}
+  .field label{display:block;font-family:'Space Mono';font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+  input[type=text],input[type=date]{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+    padding:11px 13px;color:var(--ink);font-family:'Space Mono';font-size:16px;letter-spacing:.02em}
+  input[type=text]:focus,input[type=date]:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.6)}
+  .pace-readout{font-family:'Space Mono';font-size:12.5px;color:var(--ink-soft);margin-top:7px}
+  .pace-readout b{color:var(--accent)}
+
+  button{font-family:'Archivo';font-weight:700;border-radius:11px;border:1px solid transparent;
+    cursor:pointer;transition:transform .06s,background .15s,opacity .15s}
+  button:active{transform:translateY(1px)}
+  .btn-go{width:100%;background:var(--accent);color:#1A1405;font-size:15px;padding:13px;margin-top:16px;
+    box-shadow:0 6px 18px rgba(255,210,63,.22)}
+  [data-theme="light"] .btn-go{box-shadow:0 6px 16px rgba(181,131,10,.2)}
+  .btn-go:hover{background:#FFDE6B}
+  .btn-go:disabled{opacity:.5;cursor:wait}
+  .btn-ghost{background:var(--panel-2);color:var(--ink);border-color:var(--line);font-size:12.5px;padding:8px 13px}
+  .btn-ghost:hover{border-color:var(--down)}
+  .btn-ghost:disabled{opacity:.45;cursor:not-allowed}
+
+  .stats{display:flex;gap:0;margin-top:2px}
+  .stat{flex:1;text-align:center;padding:4px 0}
+  .stat .v{font-family:'Space Mono';font-weight:700;font-size:20px}
+  .stat .v.up{color:var(--up)} .stat .v.down{color:var(--down)}
+  .stat .k{font-size:10.5px;color:var(--ink-dim);letter-spacing:.1em;text-transform:uppercase;margin-top:2px;font-family:'Space Mono'}
+
+  #out{margin-top:18px;display:none;flex-direction:column;gap:14px}
+  .eyebrow{font-family:'Space Mono';font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-dim);font-weight:700;margin:0 0 10px}
+
+  /* profile */
+  .profile-wrap{position:relative}
+  svg.profile{width:100%;display:block;border-radius:10px;background:var(--panel-2)}
+  .legend{display:flex;gap:16px;margin-top:9px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-soft)}
+  .legend i{display:inline-block;width:11px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+
+  /* clima */
+  .wstats{display:flex;gap:0}
+  .wstats > div{flex:1;text-align:center;padding:4px 0;display:flex;flex-direction:column;gap:3px}
+  .wstats b{font-family:'Space Mono';font-weight:700;font-size:20px;color:var(--accent)}
+  .wstats span{font-size:10.5px;color:var(--ink-dim);letter-spacing:.1em;text-transform:uppercase;font-family:'Space Mono'}
+  .wnote{font-size:13px;color:var(--ink-soft);margin-top:12px;line-height:1.5;text-align:center}
+
+  /* botão compartilhar */
+  .btn-share{width:100%;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);
+    font-size:14px;padding:13px}
+  .btn-share:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* raio-x */
+  .raiox{font-size:15px;line-height:1.6}
+  .verdict{font-family:'Archivo';font-weight:800;font-size:22px;line-height:1.2;letter-spacing:-.01em;
+    margin:0 0 8px;color:var(--accent)}
+
+  /* segments table */
+  .seg{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+  .seg:first-child{border-top:none}
+  .seg .trecho{font-family:'Space Mono';font-weight:700;font-size:13px;width:88px;flex:none;color:var(--ink-soft)}
+  .seg .pace{font-family:'Space Mono';font-weight:700;font-size:17px;width:74px;flex:none}
+  .seg .ins{font-size:13.5px;color:var(--ink-soft);line-height:1.45}
+
+  /* dicas */
+  .dica{display:flex;gap:11px;padding:11px 0;border-top:1px solid var(--line)}
+  .dica:first-child{border-top:none}
+  .dica .ico{width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;
+    font-family:'Archivo';font-weight:800;font-size:15px}
+  .dica.atacar .ico{background:var(--up-soft);color:var(--up)}
+  .dica.segurar .ico{background:#15302F;color:var(--down)}
+  .dica .loc{font-family:'Space Mono';font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.08em}
+  .dica .tx{font-size:13.5px;line-height:1.45;margin-top:1px}
+
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(26,20,5,.3);
+    border-top-color:#1A1405;border-radius:50%;animation:rot .7s linear infinite;vertical-align:-2px;margin-right:8px}
+  @keyframes rot{to{transform:rotate(360deg)}}
+  .err{background:var(--up-soft);color:var(--up);border-radius:10px;padding:12px;font-size:13px;
+    display:none;margin-top:12px;line-height:1.5}
+  footer{margin-top:30px;color:var(--ink-dim);font-size:11.5px;text-align:center;line-height:1.6}
+
+  /* navegação por abas (barra lateral à esquerda) */
+  body{padding-left:56px}
+  .wrap{padding-bottom:40px}
+  .view{display:none}
+  .view.active{display:block;animation:viewIn .3s cubic-bezier(.2,.7,.3,1) both}
+  @keyframes viewIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){.view.active{animation:none}}
+  .vtitle{font-family:'Archivo';font-weight:800;font-size:20px;margin:4px 0 14px}
+  .vsub{font-family:'Archivo';font-weight:700;font-size:14px;margin:18px 0 10px;color:var(--ink-soft)}
+
+  /* pop-up de comemoração */
+  .celebrate{position:fixed;inset:0;z-index:3200;display:none;align-items:center;justify-content:center;
+    background:rgba(14,17,22,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  [data-theme="light"] .celebrate{background:rgba(245,243,237,.65)}
+  .celebrate.show{display:flex;animation:fadeIn .25s ease}
+  .celebrate-card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:20px;
+    padding:32px 28px;text-align:center;max-width:340px;width:90%;
+    box-shadow:0 20px 60px rgba(0,0,0,.4);animation:pop .5s cubic-bezier(.2,1.35,.4,1) both}
+  .celebrate-trophy{font-size:64px;display:inline-block;animation:trophy 1s ease-in-out infinite}
+  .celebrate-title{font-family:'Archivo';font-weight:900;font-size:24px;margin:6px 0 4px;color:var(--accent)}
+  .celebrate-sub{color:var(--ink-soft);font-size:15px;margin-bottom:22px;line-height:1.4}
+  @keyframes pop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+  @keyframes trophy{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+  #confetti i{position:absolute;top:-14px;width:8px;height:13px;border-radius:2px;animation:confFall 1.7s linear forwards}
+  @keyframes confFall{to{transform:translateY(110vh) rotate(540deg);opacity:.15}}
+
+  /* playlist */
+  .song{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .song-info{min-width:0}
+  .song-title{font-family:'Archivo';font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .song-artist{font-family:'Space Mono';font-size:11.5px;color:var(--ink-soft);margin-top:3px}
+  .song-play{margin-left:auto;flex:none;text-decoration:none;padding:6px 13px}
+  .song .hdel{flex:none;padding:4px 11px;font-size:15px}
+
+  /* finanças */
+  .fin-budget-row{display:flex;gap:8px}
+  .fin-budget-row input{flex:1;width:auto}
+  .fin-row{display:flex;justify-content:space-between;align-items:center;font-family:'Space Mono';
+    font-size:13px;color:var(--ink-soft);margin-top:8px}
+  .fin-row b{color:var(--ink);font-size:15px}
+  .fin-cat{display:flex;justify-content:space-between;align-items:center;padding:9px 0;
+    border-top:1px solid var(--line);font-size:14px}
+  .fin-cat:first-child{border-top:none}
+  .fin-cat b{font-family:'Space Mono'}
+  .fin-exp{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .fin-desc{font-family:'Archivo';font-weight:700;font-size:14px}
+  .fin-meta{font-family:'Space Mono';font-size:11.5px;color:var(--ink-dim);margin-top:3px;text-transform:capitalize}
+  .fin-amt{margin-left:auto;font-family:'Space Mono';font-weight:700;font-size:15px}
+  .fin-exp .hdel{flex:none;padding:4px 11px;font-size:15px}
+
+  /* calendário de provas */
+  .race{margin-bottom:10px}
+  .race-head{display:flex;align-items:center;gap:10px}
+  .race-head b{font-family:'Archivo';font-weight:700;font-size:15px}
+  .race-meta{font-family:'Space Mono';font-size:12px;color:var(--ink-soft);margin-top:5px}
+  .race-cd{font-family:'Space Mono';font-size:12.5px;color:var(--accent);margin-top:6px}
+  .race .hdel{margin-left:auto;flex:none}
+
+  /* desafios */
+  .chall{margin-bottom:12px}
+  .chall-head{display:flex;align-items:center;gap:10px}
+  .chall-head b{font-family:'Archivo';font-weight:700;font-size:15px}
+  .chall-done{margin-left:auto;color:var(--down);font-family:'Space Mono';font-size:11px}
+  .bar{height:8px;background:var(--panel-2);border-radius:6px;overflow:hidden;margin:10px 0 6px}
+  .bar i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .4s ease}
+  .chall-meta{font-family:'Space Mono';font-size:12px;color:var(--ink-soft)}
+  .chall-actions{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
+  .chall-input{width:90px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    padding:8px 10px;color:var(--ink);font-family:'Space Mono';font-size:14px}
+  .chall .btn-go{margin-top:0}
+
+  /* dica de onboarding */
+  .onboard{display:flex;align-items:center;gap:10px;background:var(--panel-2);
+    border:1px dashed var(--accent);border-radius:10px;padding:10px 12px;margin-bottom:10px;
+    font-size:13px;color:var(--ink);line-height:1.4}
+  .onboard button{margin-left:auto;flex:none;background:var(--accent);color:#1A1405;border:none;
+    border-radius:8px;padding:5px 12px;font-family:'Archivo';font-weight:700;font-size:12px;cursor:pointer}
+
+  /* notificações toast */
+  .toasts{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:3000;
+    display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+  .toast{background:var(--panel);border:1px solid var(--line);color:var(--ink);
+    padding:11px 16px;border-radius:12px;font-size:13.5px;box-shadow:0 8px 30px rgba(0,0,0,.32);
+    animation:toastIn .3s ease both;max-width:90vw}
+  .toast.ok{border-color:var(--down)}
+  .toast.err{border-color:var(--up)}
+  .toast.out{animation:toastOut .3s ease forwards}
+  @keyframes toastIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes toastOut{to{opacity:0;transform:translateY(8px)}}
+
+  .calc-row{display:flex;gap:12px}
+  .calc-row>div{flex:1}
+  .clabel{display:block;font-family:'Space Mono';font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+  .calc-presets{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .calc-out{font-family:'Space Mono';font-size:15px;color:var(--ink-soft);margin-top:16px}
+  .calc-out b{color:var(--accent);font-size:24px}
+
+  .guide .gtip{padding:14px 0;border-top:1px solid var(--line)}
+  .guide .gtip:first-child{border-top:none;padding-top:0}
+  .guide .gtip b{font-family:'Archivo';font-weight:700;font-size:15px}
+  .guide .gtip p{margin:5px 0 0;color:var(--ink-soft);font-size:14px;line-height:1.55}
+
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:1500;
+    display:flex;flex-direction:column;gap:2px;width:56px;padding:14px 8px;
+    background:var(--panel);border-right:1px solid var(--line);
+    overflow-x:hidden;overflow-y:auto;transition:width .2s ease}
+  .sidebar:hover{width:186px;box-shadow:8px 0 30px rgba(0,0,0,.28)}
+  .sidebar button{position:relative;display:flex;align-items:center;gap:13px;width:100%;
+    background:none;border:none;border-radius:10px;cursor:pointer;color:var(--ink-dim);
+    padding:10px 9px;white-space:nowrap;font-family:'Space Mono';font-size:13px;
+    transition:background .15s,color .15s}
+  .sidebar button .ti{display:inline-flex;align-items:center;justify-content:center;width:24px;flex:none;transition:transform .18s}
+  .sidebar button .ti svg{width:21px;height:21px}
+  .sidebar button .tl{opacity:0;transition:opacity .18s}
+  .sidebar:hover button .tl{opacity:1}
+  .sidebar button:hover{background:var(--panel-2);color:var(--ink)}
+  .sidebar button.active{color:var(--accent);background:var(--panel-2)}
+  .sidebar button.active .ti{transform:scale(1.12)}
+  .sidebar button.active::before{content:'';position:absolute;left:-8px;top:7px;bottom:7px;width:3px;
+    background:var(--accent);border-radius:0 3px 3px 0;animation:barIn .25s ease both}
+  @keyframes barIn{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+
+  /* ----- tema (botão) ----- */
+  .theme-btn{flex:none;width:34px;height:34px;border-radius:9px;background:none;
+    border:1px solid var(--line);color:var(--ink);font-size:15px;cursor:pointer;
+    display:grid;place-items:center;transition:border-color .15s,transform .1s,background .15s}
+  .theme-btn:hover{border-color:var(--accent)}
+  .theme-btn:active{transform:scale(.92)}
+  [data-theme="light"] #map .leaflet-tile{filter:none}
+
+  /* ----- hover / animações ----- */
+  .card{transition:border-color .2s,box-shadow .25s,transform .2s}
+  .card:hover{box-shadow:0 6px 26px rgba(0,0,0,.22)}
+  [data-theme="light"] .card:hover{box-shadow:0 6px 22px rgba(60,50,20,.12)}
+  .btn-go:hover{transform:translateY(-1px)}
+  .btn-ghost,.btn-share{transition:border-color .15s,color .15s,background .15s,transform .08s}
+  .seg,.dica{transition:background .15s}
+  .seg:hover,.dica:hover{background:var(--panel-2)}
+  .gtip{transition:padding-left .15s}
+  .gtip:hover{padding-left:6px}
+  .stat .v,.wstats b{transition:transform .2s}
+  .stat:hover .v,.wstats > div:hover b{transform:scale(1.08)}
+
+  @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  #out[style*="flex"] > *{animation:rise .45s cubic-bezier(.2,.7,.3,1) both}
+  #out > *:nth-child(2){animation-delay:.06s}
+  #out > *:nth-child(3){animation-delay:.12s}
+  #out > *:nth-child(4){animation-delay:.18s}
+  #out > *:nth-child(5){animation-delay:.24s}
+  #out > *:nth-child(6){animation-delay:.30s}
+  @media(prefers-reduced-motion:reduce){#out[style*="flex"] > *{animation:none}}
+
+  /* chips de seleção (treino) */
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+  .btn-ghost.on{background:var(--accent);color:#1A1405;border-color:transparent}
+
+  /* itens do histórico */
+  .histitem{cursor:pointer;margin-bottom:10px}
+  .hrow{display:flex;align-items:center;gap:12px}
+  .hverdict{font-family:'Archivo';font-weight:700;font-size:15px;color:var(--accent)}
+  .hmeta{font-family:'Space Mono';font-size:11.5px;color:var(--ink-soft);margin-top:3px}
+  .hdel{margin-left:auto;flex:none;font-size:11px;padding:6px 10px}
+  #trOut{margin-top:14px;display:flex;flex-direction:column;gap:14px}
+
+  /* botões "Entrar com Google" */
+  #gateLogin{display:inline-flex;align-items:center;justify-content:center;gap:10px}
+  .gicon{display:inline-flex;line-height:0;flex:none}
+
+  /* portão de login (tela de abertura) */
+  #authGate{position:fixed;inset:0;z-index:2000;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;padding:24px}
+  #authGate.hidden{display:none}
+
+  /* tela de carregamento ao logar (ícone animado + blur no fundo) */
+  #loader{position:fixed;inset:0;z-index:2500;display:none;align-items:center;justify-content:center;
+    background:rgba(14,17,22,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  [data-theme="light"] #loader{background:rgba(245,243,237,.6)}
+  #loader.show{display:flex;animation:fadeIn .25s ease}
+  .loader-inner{text-align:center;animation:loaderPulse .8s ease-in-out infinite}
+  .loader-mark{width:96px;height:96px;filter:drop-shadow(0 6px 20px rgba(255,210,63,.25))}
+  .loader-mark path{stroke-dasharray:70;animation:loaderDraw .9s ease-in-out infinite}
+  .loader-dot{animation:loaderDot .8s ease-in-out infinite}
+  .loader-text{font-family:'Space Mono';font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-soft);margin-top:14px}
+  @keyframes loaderPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+  @keyframes loaderDraw{0%{stroke-dashoffset:70}55%,100%{stroke-dashoffset:0}}
+  @keyframes loaderDot{0%,100%{opacity:1}50%{opacity:.3}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .gate-card{max-width:360px;width:100%;text-align:center;animation:rise .5s ease both}
+  .gate-card .mark{width:54px;height:54px;margin:0 auto 14px}
+  .gate-logo{font-family:'Archivo';font-weight:900;font-size:40px;letter-spacing:-.03em;line-height:1}
+  .gate-logo b{color:var(--accent)}
+  .gate-sub{color:var(--ink-soft);font-size:15px;line-height:1.55;margin:14px 0 26px}
+  .gate-note{color:var(--ink-dim);font-size:12px;margin-top:14px}
+
+  /* login / conta */
+  #authCard{margin-bottom:12px}
+  #authedIn{display:flex;align-items:center;gap:12px}
+  #authedIn .hmeta{margin:0}
+  .acct-avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--panel-2);flex:none}
+  .acct-name{font-family:'Archivo';font-weight:700;font-size:15px}
+
+  /* avatar na barra lateral */
+  .nav-spacer{flex:1;min-height:10px}
+  .nav-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;background:var(--panel-2);display:block}
+
+  /* refinamentos "cara de sério" */
+  ::selection{background:var(--accent);color:#1A1405}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
+  *::-webkit-scrollbar{width:10px;height:10px}
+  *::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;border:3px solid var(--bg)}
+  *::-webkit-scrollbar-thumb:hover{background:var(--ink-dim)}
+  *::-webkit-scrollbar-track{background:transparent}
+  .sidebar::-webkit-scrollbar{width:0}
+
+  /* ajustes mobile */
+  @media(max-width:640px){
+    body{padding-left:52px}
+    .sidebar{width:52px;padding:12px 6px}
+    .sidebar:hover{width:172px}
+    .wrap{padding:24px 14px 40px}
+    #map{height:260px}
+    .vtitle{font-size:18px}
+    .calc-row{flex-direction:column;gap:0}
+  }
+
+</style>
+</head>
+<body>
+<div id="authGate">
+  <div class="gate-card">
+    <svg class="mark" viewBox="0 0 34 34" fill="none">
+      <path d="M2 24 L9 18 L14 21 L21 9 L26 14 L32 6" stroke="#FFD23F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="21" cy="9" r="3" fill="#FF5C49"/>
+    </svg>
+    <div class="gate-logo">Pa<b>cer</b></div>
+    <p class="gate-sub">Seu plano de prova, km a km. Entre pra montar suas estratégias e salvá-las na nuvem.</p>
+    <button class="btn-go" id="gateLogin"><span class="gicon"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span>Entrar com Google</button>
+    <p class="gate-note" id="gateNote">Login rápido e seguro com sua conta Google.</p>
+  </div>
+</div>
+
+<div id="loader">
+  <div class="loader-inner">
+    <svg class="loader-mark" viewBox="0 0 34 34" fill="none">
+      <path d="M2 24 L9 18 L14 21 L21 9 L26 14 L32 6" stroke="#FFD23F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle class="loader-dot" cx="21" cy="9" r="3" fill="#FF5C49"/>
+    </svg>
+    <div class="loader-text" id="loaderText">Bora correr…</div>
+  </div>
+</div>
+
+<div id="celebrate" class="celebrate">
+  <div id="confetti"></div>
+  <div class="celebrate-card">
+    <div class="celebrate-trophy">🏆</div>
+    <div class="celebrate-title">Desafio concluído!</div>
+    <div class="celebrate-sub" id="celebrateSub"></div>
+    <button class="btn-go" id="celebrateClose">Boraa! 🎉</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <header>
+    <svg class="mark" viewBox="0 0 34 34" fill="none">
+      <path d="M2 24 L9 18 L14 21 L21 9 L26 14 L32 6" stroke="#FFD23F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="21" cy="9" r="3" fill="#FF5C49"/>
+    </svg>
+    <div class="logo">Pa<b>cer</b></div>
+    <div class="tag">plano de prova<br>km a km</div>
+    <button id="themeBtn" class="theme-btn" aria-label="Alternar tema claro/escuro">🌙</button>
+  </header>
+
+  <section id="view-plano" class="view active">
+  <p class="today" id="today"></p>
+  <p class="greet" id="greet"></p>
+  <p class="sub">Desenha o trajeto da prova no mapa e diz sua meta. O Pacer estuda o relevo e devolve o ritmo certo pra cada trecho — onde segurar nas subidas e onde atacar nas descidas pra não quebrar no fim.</p>
+
+  <div class="card pad">
+    <div class="grid2">
+      <div>
+        <p class="label">Trajeto da prova</p>
+        <p class="hint">Busque o local da prova, depois clique no mapa pra marcar o percurso ponto a ponto.</p>
+        <div id="onboard" class="onboard">👆 Clique no mapa pra desenhar o trajeto da prova. <button id="onboardX">entendi</button></div>
+        <div class="map-search">
+          <input type="text" id="placeSearch" placeholder="Buscar cidade ou local da prova…">
+          <button class="btn-ghost" id="searchBtn">Buscar</button>
+        </div>
+        <div id="map"></div>
+        <div id="mapFallback" class="map-msg" style="display:none"></div>
+        <div class="map-tools">
+          <button class="btn-ghost on" id="snapToggle">Seguir ruas</button>
+          <button class="btn-ghost" id="undo" disabled>Desfazer ponto</button>
+          <button class="btn-ghost" id="clear" disabled>Limpar trajeto</button>
+          <span class="route-info" id="routeInfo">0 pontos · <b id="liveDist">0,0 km</b></span>
+        </div>
+      </div>
+      <div>
+        <p class="label">Sua meta</p>
+        <p class="hint">Tempo que você quer fazer na prova.</p>
+        <div class="field">
+          <label>Tempo alvo (mm:ss ou h:mm:ss)</label>
+          <input type="text" id="goal" value="50:00" inputmode="numeric">
+          <div class="pace-readout" id="paceRead">distância: <b id="distRead">—</b> · pace médio: <b id="avgRead">—</b></div>
+        </div>
+        <div class="field">
+          <label>Data da prova (opcional — pro clima)</label>
+          <input type="date" id="raceDate">
+        </div>
+      </div>
+    </div>
+
+    <div class="stats card" style="background:var(--panel-2);margin-top:16px;display:none" id="statsBox">
+      <div class="stat"><div class="v" id="sDist">—</div><div class="k">distância</div></div>
+      <div class="stat"><div class="v up" id="sUp">—</div><div class="k">ganho</div></div>
+      <div class="stat"><div class="v down" id="sDown">—</div><div class="k">perda</div></div>
+      <div class="stat"><div class="v" id="sMax">—</div><div class="k">trecho + duro</div></div>
+    </div>
+
+    <button class="btn-go" id="go">Montar meu plano de prova</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div id="out">
+    <div class="card pad" id="weatherCard" style="display:none">
+      <p class="eyebrow">Clima previsto pra prova</p>
+      <div id="weather"></div>
+    </div>
+
+    <div class="card pad">
+      <p class="eyebrow">Perfil do percurso</p>
+      <div class="profile-wrap"><svg class="profile" id="profile" viewBox="0 0 800 220" preserveAspectRatio="none"></svg></div>
+      <div class="legend">
+        <span><i style="background:var(--up)"></i>subida</span>
+        <span><i style="background:var(--down)"></i>descida</span>
+        <span><i style="background:var(--flat)"></i>plano</span>
+        <span><i style="background:var(--accent);width:8px;height:8px;border-radius:50%"></i>ponto-chave</span>
+      </div>
+    </div>
+
+    <div class="card pad">
+      <p class="eyebrow">Raio-x da prova</p>
+      <p class="verdict" id="verdict"></p>
+      <div class="raiox" id="raiox"></div>
+    </div>
+
+    <div class="card pad">
+      <p class="eyebrow">Pace por trecho · alvo <span id="alvoTxt" class="mono"></span></p>
+      <div id="segments"></div>
+    </div>
+
+    <div class="card pad">
+      <p class="eyebrow">Onde atacar e onde segurar</p>
+      <div id="dicas"></div>
+    </div>
+
+    <button class="btn-share" id="share">Compartilhar / baixar meu plano</button>
+  </div>
+  </section><!-- /view-plano -->
+
+  <section id="view-calc" class="view">
+    <h2 class="vtitle">Calculadora de pace</h2>
+    <div class="card pad">
+      <p class="label">Que pace eu preciso?</p>
+      <p class="hint">Informe a distância e o tempo que você quer fazer.</p>
+      <div class="calc-row">
+        <div><label class="clabel">Distância (km)</label><input type="text" id="caDist" inputmode="decimal" placeholder="10"></div>
+        <div><label class="clabel">Tempo alvo</label><input type="text" id="caTime" inputmode="numeric" placeholder="50:00"></div>
+      </div>
+      <div class="calc-presets">
+        <button class="btn-ghost preset" data-d="5">5K</button>
+        <button class="btn-ghost preset" data-d="10">10K</button>
+        <button class="btn-ghost preset" data-d="21.1">21K</button>
+        <button class="btn-ghost preset" data-d="42.2">42K</button>
+      </div>
+      <div class="calc-out" id="caOut">pace: <b>—</b></div>
+    </div>
+    <div class="card pad">
+      <p class="label">Quanto tempo vou fazer?</p>
+      <p class="hint">Informe a distância e o pace que pretende segurar.</p>
+      <div class="calc-row">
+        <div><label class="clabel">Distância (km)</label><input type="text" id="cbDist" inputmode="decimal" placeholder="21.1"></div>
+        <div><label class="clabel">Pace (min/km)</label><input type="text" id="cbPace" inputmode="numeric" placeholder="5:00"></div>
+      </div>
+      <div class="calc-out" id="cbOut">tempo: <b>—</b></div>
+    </div>
+  </section>
+
+  <section id="view-guia" class="view">
+    <h2 class="vtitle">Guia de pacing</h2>
+    <div class="card pad guide">
+      <div class="gtip"><b>Largada controlada</b><p>Os primeiros 1–2 km devem parecer fáceis demais — é proposital. Largar rápido demais é o erro nº 1 e cobra caro lá no fim.</p></div>
+      <div class="gtip"><b>Negative split</b><p>Tente fazer a segunda metade mais rápida que a primeira. Quem desacelera menos no fim quase sempre passa quem largou voando.</p></div>
+      <div class="gtip"><b>Subidas: esforço, não pace</b><p>Mantenha o esforço, não o ritmo. Encurte a passada, aumente a cadência e aceite perder alguns segundos — você recupera na descida.</p></div>
+      <div class="gtip"><b>Descidas: aproveite com freio</b><p>Tempo de graça, mas sem se jogar: descer forte demais detona o quadríceps e cobra mais adiante.</p></div>
+      <div class="gtip"><b>Calor</b><p>Acima de ~25 °C, segure o ritmo no início, beba em todos os postos e não tente bater recorde — o corpo paga mais caro no calor.</p></div>
+    </div>
+  </section>
+
+  <section id="view-desafios" class="view">
+    <h2 class="vtitle">Desafios</h2>
+    <p class="sub">Aceite metas e acompanhe seu progresso — atualize manualmente conforme você corre.</p>
+    <div id="challList"></div>
+  </section>
+
+  <section id="view-calendario" class="view">
+    <h2 class="vtitle">Calendário de provas</h2>
+    <div class="card pad">
+      <div class="field"><label>Nome da prova</label><input type="text" id="calName" placeholder="Ex: Maratona do Rio"></div>
+      <div class="calc-row">
+        <div class="field" style="margin-top:14px"><label>Data</label><input type="date" id="calDate"></div>
+        <div class="field" style="margin-top:14px"><label>Distância (km)</label><input type="text" id="calDist" inputmode="decimal" placeholder="42.2"></div>
+      </div>
+      <div class="field"><label>Local (opcional)</label><input type="text" id="calLocal" placeholder="Cidade / estado"></div>
+      <button class="btn-go" id="calAdd">Adicionar prova</button>
+    </div>
+    <h3 class="vsub">Suas provas</h3>
+    <div id="calList"></div>
+  </section>
+
+  <section id="view-financas" class="view">
+    <h2 class="vtitle">Finanças</h2>
+    <div class="card pad">
+      <p class="label">Orçamento mensal</p>
+      <p class="hint">Quanto você quer gastar por mês com corrida.</p>
+      <div class="fin-budget-row">
+        <input type="text" id="finBudget" inputmode="decimal" placeholder="0,00">
+        <button class="btn-ghost" id="finBudgetSave">Salvar</button>
+      </div>
+      <div id="finSummary" style="margin-top:16px"></div>
+    </div>
+
+    <h3 class="vsub">Por categoria · mês atual</h3>
+    <div class="card pad"><div id="finCats"></div></div>
+
+    <h3 class="vsub">Adicionar gasto</h3>
+    <div class="card pad">
+      <div class="field"><label>Descrição</label><input type="text" id="finDesc" placeholder="Ex: Inscrição da prova"></div>
+      <div class="field" style="margin-top:14px"><label>Valor (R$)</label><input type="text" id="finVal" inputmode="decimal" placeholder="0,00"></div>
+      <div class="field" style="margin-top:14px"><label>Categoria</label>
+        <div class="chips" id="finCat">
+          <button class="btn-ghost on" data-v="corrida">🏃 Corrida</button>
+          <button class="btn-ghost" data-v="suplementos">💊 Suplementos</button>
+          <button class="btn-ghost" data-v="tênis">👟 Tênis</button>
+          <button class="btn-ghost" data-v="outros">• Outros</button>
+        </div>
+      </div>
+      <div class="field" id="finOtherWrap" style="display:none;margin-top:14px">
+        <label>Especifique de onde foi o gasto</label>
+        <input type="text" id="finOther" placeholder="Ex: fisioterapia, massagem, inscrição…">
+      </div>
+      <button class="btn-go" id="finAdd">Adicionar gasto</button>
+    </div>
+
+    <h3 class="vsub">Gastos do mês</h3>
+    <div id="finList"></div>
+  </section>
+
+  <section id="view-playlist" class="view">
+    <h2 class="vtitle">Playlist de corrida</h2>
+    <p class="sub">Monte a trilha sonora que te dá gás. Adicione o link (YouTube, Spotify…) pra ouvir num toque.</p>
+    <div class="card pad">
+      <div class="field"><label>Música</label><input type="text" id="plTitle" placeholder="Ex: Eye of the Tiger"></div>
+      <div class="field" style="margin-top:14px"><label>Artista</label><input type="text" id="plArtist" placeholder="Survivor"></div>
+      <div class="field" style="margin-top:14px"><label>Link (opcional)</label><input type="text" id="plUrl" inputmode="url" placeholder="https://..."></div>
+      <button class="btn-go" id="plAdd">Adicionar música</button>
+    </div>
+    <h3 class="vsub">Suas músicas <span id="plCount" class="mono" style="color:var(--ink-dim);font-size:12px;font-weight:400"></span></h3>
+    <div id="plList"></div>
+  </section>
+
+  <section id="view-forca" class="view">
+    <h2 class="vtitle">Força & Mobilidade</h2>
+    <div class="card pad guide">
+      <div class="gtip"><b>Por que treinar força</b><p>Corredor forte é corredor que não se machuca. Musculatura firme melhora a economia de corrida e segura o ritmo nos últimos quilômetros, quando todo mundo desacelera.</p></div>
+    </div>
+    <h3 class="vsub">Fortalecimento · 2x por semana</h3>
+    <div class="card pad guide">
+      <div class="gtip"><b>Agachamento</b><p>3×12. Base de tudo: quadríceps, glúteo e core. Desça até a coxa paralela ao chão, joelho alinhado ao pé.</p></div>
+      <div class="gtip"><b>Afundo (passada)</b><p>3×10 por perna. Equilíbrio e força perna a perna — ótimo pra encarar subidas.</p></div>
+      <div class="gtip"><b>Elevação de panturrilha</b><p>3×15. Panturrilha forte = mais impulsão e menos risco de lesão no tendão.</p></div>
+      <div class="gtip"><b>Ponte de glúteo</b><p>3×15. O glúteo é o motor da corrida; fortalecê-lo tira sobrecarga dos joelhos.</p></div>
+      <div class="gtip"><b>Prancha</b><p>3× 30–45s. Core estável mantém a postura e a eficiência quando o cansaço aperta.</p></div>
+    </div>
+    <h3 class="vsub">Mobilidade · antes de correr ou em dias leves</h3>
+    <div class="card pad guide">
+      <div class="gtip"><b>Tornozelo</b><p>Círculos e flexões contra a parede. Tornozelo móvel melhora a passada e absorve impacto.</p></div>
+      <div class="gtip"><b>Quadril</b><p>Balanço de perna (frente/trás e lateral), 10× cada. Solta o quadril pra uma passada mais ampla.</p></div>
+      <div class="gtip"><b>Aquecimento dinâmico</b><p>Skipping, calcanhar no glúteo e passadas progressivas antes de acelerar — nunca largue frio.</p></div>
+    </div>
+  </section>
+
+  <section id="view-sobre" class="view">
+    <h2 class="vtitle">Sobre o Pacer</h2>
+    <div class="card pad guide">
+      <div class="gtip"><b>O que o Pacer faz</b><p>Você desenha o trajeto da prova no mapa e diz sua meta de tempo. O app lê o relevo do percurso e uma IA monta a estratégia de ritmo — onde segurar nas subidas e onde atacar nas descidas pra você não quebrar no fim.</p></div>
+    </div>
+  </section>
+
+  <section id="view-treino" class="view">
+    <h2 class="vtitle">Plano de treino</h2>
+    <div class="card pad">
+      <p class="hint">A IA monta um esqueleto de treino semanal até a prova, no seu nível.</p>
+      <div class="field"><label>Prova</label>
+        <div class="chips" id="trDist">
+          <button class="btn-ghost" data-v="5K">5K</button>
+          <button class="btn-ghost on" data-v="10K">10K</button>
+          <button class="btn-ghost" data-v="21K (meia maratona)">21K</button>
+          <button class="btn-ghost" data-v="42K (maratona)">42K</button>
+        </div>
+      </div>
+      <div class="field"><label>Nível</label>
+        <div class="chips" id="trLevel">
+          <button class="btn-ghost on" data-v="iniciante">Iniciante</button>
+          <button class="btn-ghost" data-v="intermediário">Intermediário</button>
+          <button class="btn-ghost" data-v="avançado">Avançado</button>
+        </div>
+      </div>
+      <div class="field"><label>Dias por semana</label>
+        <div class="chips" id="trDays">
+          <button class="btn-ghost" data-v="3">3</button>
+          <button class="btn-ghost on" data-v="4">4</button>
+          <button class="btn-ghost" data-v="5">5</button>
+        </div>
+      </div>
+      <div class="field"><label>Semanas até a prova</label>
+        <input type="text" id="trWeeks" inputmode="numeric" value="8">
+      </div>
+      <button class="btn-go" id="trGo">Gerar plano de treino</button>
+      <div class="err" id="trErr"></div>
+    </div>
+    <div id="trOut"></div>
+  </section>
+
+  <section id="view-hist" class="view">
+    <h2 class="vtitle">Planos salvos</h2>
+    <div class="card pad" id="authCard">
+      <div id="authedIn">
+        <img id="acctAvatar" class="acct-avatar" alt="" referrerpolicy="no-referrer">
+        <div><div class="acct-name" id="acctName"></div><div class="hmeta" id="userEmail"></div></div>
+        <button class="btn-ghost" id="logoutBtn" style="margin-left:auto">Sair</button>
+      </div>
+    </div>
+    <div id="histEmpty" class="card pad" style="text-align:center;color:var(--ink-soft);font-size:14px">
+      Nenhum plano salvo ainda. Gere um plano na aba <b>Plano</b> que ele aparece aqui.
+    </div>
+    <div id="histList"></div>
+  </section>
+
+  <footer>Pacer · mapa OpenStreetMap · relevo Open-Meteo · estratégia gerada por IA ao vivo.<br>Desenhe o trajeto real da sua prova no mapa pra um plano de verdade.</footer>
+</div>
+
+<nav class="sidebar">
+  <button data-view="plano" class="active"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span><span class="tl">Plano</span></button>
+  <button data-view="treino"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg></span><span class="tl">Treino</span></button>
+  <button data-view="desafios"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span><span class="tl">Desafios</span></button>
+  <button data-view="calendario"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><span class="tl">Calendário</span></button>
+  <button data-view="financas"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span class="tl">Finanças</span></button>
+  <button data-view="playlist"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5a9 9 0 0 1 18 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg></span><span class="tl">Playlist</span></button>
+  <button data-view="hist"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span><span class="tl">Salvos</span></button>
+  <button data-view="calc"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="2" x2="14" y2="2"/><line x1="12" y1="14" x2="15" y2="11"/><circle cx="12" cy="14" r="8"/></svg></span><span class="tl">Pace</span></button>
+  <button data-view="guia"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span><span class="tl">Guia</span></button>
+  <button data-view="forca"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="9" width="3" height="6" rx="1"/><rect x="19" y="9" width="3" height="6" rx="1"/><rect x="5" y="10.5" width="2.5" height="3" rx=".5"/><rect x="16.5" y="10.5" width="2.5" height="3" rx=".5"/><line x1="7.5" y1="12" x2="16.5" y2="12"/></svg></span><span class="tl">Força</span></button>
+  <button data-view="sobre"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span><span class="tl">Sobre</span></button>
+  <div class="nav-spacer"></div>
+  <button data-view="hist" class="nav-acct" id="navAcct"><span class="ti"><img id="navAvatar" class="nav-avatar" alt="" referrerpolicy="no-referrer"></span><span class="tl" id="navName">Conta</span></button>
+</nav>
+
+<div id="toasts" class="toasts"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const $=id=>document.getElementById(id);
+let COURSE=null; // {pts:[{d(km),ele}], distKm, up, down, perKm:[{km,gain,grade}], hardest}
+
+/* ===================================================================
+   NÚCLEO REAPROVEITADO DO PROTÓTIPO (cálculo de relevo + perfil + IA)
+   A única coisa que mudou foi a FONTE dos pontos: antes vinha do GPX,
+   agora vem do mapa do Google + Elevation API.
+   =================================================================== */
+
+function haversine(a,b){
+  const R=6371000,toR=x=>x*Math.PI/180;
+  const dLat=toR(b.lat-a.lat),dLon=toR(b.lon-a.lon);
+  const s=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+function buildCourse(pts){
+  let cum=0; const out=[{d:0,ele:pts[0].ele}];
+  let up=0,down=0;
+  for(let i=1;i<pts.length;i++){
+    cum+=haversine(pts[i-1],pts[i]);
+    const de=pts[i].ele-pts[i-1].ele;
+    if(de>0)up+=de; else down+=-de;
+    out.push({d:cum/1000,ele:pts[i].ele});
+  }
+  const distKm=cum/1000;
+  const perKm=[]; const nKm=Math.max(1,Math.round(distKm));
+  for(let k=0;k<nKm;k++){
+    const a=out.find(p=>p.d>=k)||out[0];
+    const b=[...out].reverse().find(p=>p.d<=k+1)||out[out.length-1];
+    const dist=(Math.min(k+1,distKm)-k)*1000;
+    const gain=b.ele-a.ele;
+    perKm.push({km:k+1,gain:Math.round(gain),grade:dist?(gain/dist*100):0});
+  }
+  const hardest=perKm.reduce((m,s)=>s.grade>m.grade?s:m,perKm[0]);
+  return {pts:out,distKm,up:Math.round(up),down:Math.round(down),perKm,hardest};
+}
+
+function drawProfile(course, keypoints){
+  const W=800,H=220,pad=14;
+  const eles=course.pts.map(p=>p.ele);
+  const minE=Math.min(...eles), maxE=Math.max(...eles), span=Math.max(1,maxE-minE);
+  const X=d=>pad+(d/course.distKm)*(W-2*pad);
+  const Y=e=>H-pad-((e-minE)/span)*(H-2*pad-16);
+  let g='';
+  for(let k=0;k<=Math.round(course.distKm);k++){
+    const x=X(k);
+    g+=`<line x1="${x}" y1="${pad}" x2="${x}" y2="${H-pad}" stroke="var(--grid)" stroke-width="1"/>`;
+    if(k%2===0) g+=`<text x="${x}" y="${H-3}" fill="var(--ink-dim)" font-size="10" font-family="Space Mono" text-anchor="middle">${k}</text>`;
+  }
+  let area=`M ${X(0)} ${H-pad}`;
+  course.pts.forEach(p=>area+=` L ${X(p.d).toFixed(1)} ${Y(p.ele).toFixed(1)}`);
+  area+=` L ${X(course.distKm)} ${H-pad} Z`;
+  let lines='';
+  for(let i=1;i<course.pts.length;i++){
+    const a=course.pts[i-1],b=course.pts[i];
+    const dd=(b.d-a.d)*1000||1, gr=(b.ele-a.ele)/dd*100;
+    const col=gr>2?'var(--up)':gr<-2?'var(--down)':'var(--flat)';
+    lines+=`<line x1="${X(a.d).toFixed(1)}" y1="${Y(a.ele).toFixed(1)}" x2="${X(b.d).toFixed(1)}" y2="${Y(b.ele).toFixed(1)}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`;
+  }
+  let marks='';
+  (keypoints||[]).forEach(kp=>{
+    const near=course.pts.reduce((m,p)=>Math.abs(p.d-kp.km)<Math.abs(m.d-kp.km)?p:m,course.pts[0]);
+    const x=X(near.d),y=Y(near.ele);
+    marks+=`<line x1="${x}" y1="${pad}" x2="${x}" y2="${y}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 3" opacity=".6"/>
+            <circle cx="${x}" cy="${y}" r="4.5" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.5"/>`;
+  });
+  $('profile').innerHTML=
+    `<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+       <stop offset="0" stop-color="#FFD23F" stop-opacity=".16"/>
+       <stop offset="1" stop-color="#FFD23F" stop-opacity="0"/></linearGradient></defs>
+     ${g}<path d="${area}" fill="url(#ag)"/>${lines}${marks}`;
+}
+
+/* ---------- goal helpers ---------- */
+function parseTime(s){
+  const p=s.trim().split(':').map(Number);
+  if(p.some(isNaN)) return null;
+  if(p.length===2) return p[0]*60+p[1];
+  if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+  return null;
+}
+function fmtPace(secPerKm){
+  const m=Math.floor(secPerKm/60), s=Math.round(secPerKm%60);
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+function refreshReadout(){
+  if(!COURSE){$('distRead').textContent='—';$('avgRead').textContent='—';return;}
+  $('distRead').textContent=COURSE.distKm.toFixed(1)+' km';
+  const t=parseTime($('goal').value);
+  $('avgRead').textContent = t? fmtPace(t/COURSE.distKm)+' /km' : '—';
+}
+
+/* ---------- render (reaproveitado) ---------- */
+function render(d,avg){
+  const kps=(d.dicas||[]).map(x=>({km:parseFloat((x.local||'').replace(/[^\d.]/g,''))||0}));
+  drawProfile(COURSE,kps);
+  $('verdict').textContent=d.verdict||'';
+  $('raiox').textContent=d.raiox||'';
+  $('alvoTxt').textContent=avg+'/km';
+  $('segments').innerHTML=(d.segmentos||[]).map(s=>
+    `<div class="seg"><div class="trecho">${esc(s.trecho)}</div>
+     <div class="pace">${esc(s.pace)}</div>
+     <div class="ins">${esc(s.instrucao)}</div></div>`).join('');
+  $('dicas').innerHTML=(d.dicas||[]).map(x=>{
+    const at=x.tipo==='atacar';
+    return `<div class="dica ${at?'atacar':'segurar'}">
+      <div class="ico">${at?'▲':'▼'}</div>
+      <div><div class="loc">${esc(x.local)} · ${at?'atacar':'segurar'}</div>
+      <div class="tx">${esc(x.texto)}</div></div></div>`;}).join('');
+}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ---------- notificações toast ---------- */
+function showToast(msg,type){
+  if(!$('toasts')) return;
+  const t=document.createElement('div'); t.className='toast '+(type||'ok'); t.innerHTML=msg;
+  $('toasts').appendChild(t);
+  setTimeout(()=>{ t.classList.add('out'); setTimeout(()=>t.remove(),300); }, 2600);
+}
+/* ---------- data de hoje na abertura ---------- */
+(function(){
+  const t=$('today'); if(!t) return;
+  const d=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+  t.textContent=d.charAt(0).toUpperCase()+d.slice(1);
+})();
+/* ---------- contagem animada de números ---------- */
+function countUp(el,target,o){
+  if(!el) return; o=o||{};
+  const dur=700,dec=o.dec||0,pre=o.prefix||'',suf=o.suffix||'',start=performance.now();
+  function tick(t){
+    const p=Math.min(1,(t-start)/dur), eased=1-Math.pow(1-p,3), val=target*eased;
+    el.textContent=pre+val.toFixed(dec)+suf;
+    if(p<1) requestAnimationFrame(tick); else el.textContent=pre+target.toFixed(dec)+suf;
+  }
+  requestAnimationFrame(tick);
+}
+/* ---------- dica de onboarding (primeira vez) ---------- */
+function dismissOnboard(){ const o=$('onboard'); if(o) o.style.display='none'; try{localStorage.setItem('pacer-onboarded','1');}catch(e){} }
+(function(){
+  try{ if(localStorage.getItem('pacer-onboarded')&&$('onboard')) $('onboard').style.display='none'; }catch(e){}
+  if($('onboardX')) $('onboardX').addEventListener('click',dismissOnboard);
+})();
+
+/* ===================================================================
+   NOVO: entrada do percurso pelo mapa (Leaflet + OpenStreetMap, sem chave)
+   =================================================================== */
+let map, poly, markers=[], path=[]; // path: [{lat,lng}] = vértices clicados
+let snap=true, routeCoords=[], routeDist=0, routeReq=0; // snap-to-roads (OSRM)
+const dotIcon=L.divIcon({className:'route-dot',iconSize:[16,16],iconAnchor:[8,8]});
+
+function initMap(){
+  map=L.map('map',{zoomControl:true}).setView([-12.9777,-38.5016],14); // Salvador-BA
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+  poly=L.polyline([],{color:'#FFD23F',weight:4,opacity:.95}).addTo(map);
+  map.on('click',e=>addPoint(e.latlng));
+  // tenta centralizar onde o usuário está
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>map.setView([pos.coords.latitude,pos.coords.longitude],14),
+      ()=>{}, {timeout:4000});
+  }
+}
+
+function addPoint(latlng){
+  dismissOnboard();
+  const p={lat:latlng.lat,lng:latlng.lng};
+  path.push(p);
+  const m=L.marker(latlng,{icon:dotIcon,draggable:true}).addTo(map);
+  m.on('dragend',()=>{ const i=markers.indexOf(m); if(i>=0){ const ll=m.getLatLng(); path[i]={lat:ll.lat,lng:ll.lng}; updateRoute(); } });
+  markers.push(m);
+  updateRoute();
+}
+function undoPoint(){
+  if(!path.length)return;
+  path.pop(); map.removeLayer(markers.pop());
+  updateRoute();
+}
+function clearRoute(){
+  path=[]; markers.forEach(m=>map.removeLayer(m)); markers=[];
+  routeCoords=[]; routeDist=0;
+  poly.setLatLngs([]); COURSE=null;
+  $('statsBox').style.display='none';
+  $('out').style.display='none';
+  updateRouteInfo();
+}
+/* recalcula a linha: snap nas ruas (OSRM) ou reta entre os pontos */
+async function updateRoute(){
+  if(path.length<2){
+    routeCoords=path.slice(); routeDist=0;
+    poly.setLatLngs(path.map(p=>[p.lat,p.lng])); updateRouteInfo(); return;
+  }
+  if(snap){
+    const my=++routeReq;
+    try{
+      const coords=path.map(p=>p.lng.toFixed(6)+','+p.lat.toFixed(6)).join(';');
+      const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+      const d=await r.json();
+      if(my!==routeReq) return;               // chegou uma versão mais nova
+      if(d.code==='Ok'&&d.routes&&d.routes[0]){
+        routeCoords=d.routes[0].geometry.coordinates.map(c=>({lat:c[1],lng:c[0]}));
+        routeDist=d.routes[0].distance;
+        poly.setLatLngs(routeCoords.map(p=>[p.lat,p.lng]));
+        updateRouteInfo(); return;
+      }
+    }catch(e){ if(my!==routeReq) return; }
+  }
+  // sem snap (ou falha): reta entre os pontos
+  routeCoords=path.slice(); routeDist=liveDistanceKm()*1000;
+  poly.setLatLngs(path.map(p=>[p.lat,p.lng])); updateRouteInfo();
+}
+function liveDistanceKm(){
+  let d=0;
+  for(let i=1;i<path.length;i++)
+    d+=haversine({lat:path[i-1].lat,lon:path[i-1].lng},{lat:path[i].lat,lon:path[i].lng});
+  return d/1000;
+}
+function updateRouteInfo(){
+  const km=(routeDist||0)/1000;
+  $('routeInfo').innerHTML=`${path.length} ponto${path.length===1?'':'s'} · <b>${km.toFixed(1).replace('.',',')} km</b>`;
+  $('undo').disabled=path.length===0;
+  $('clear').disabled=path.length===0;
+  if(!COURSE){ // só mostra distância "ao vivo" enquanto não há perfil calculado
+    $('distRead').textContent= km>0 ? km.toFixed(1)+' km' : '—';
+    const t=parseTime($('goal').value);
+    $('avgRead').textContent = (km>0&&t)? fmtPace(t/km)+' /km' : '—';
+  }
+}
+$('undo').addEventListener('click',undoPoint);
+$('clear').addEventListener('click',clearRoute);
+$('snapToggle').addEventListener('click',()=>{
+  snap=!snap; $('snapToggle').classList.toggle('on',snap);
+  showToast(snap?'Seguindo as ruas 🛣️':'Modo livre (linha reta)'); updateRoute();
+});
+$('goal').addEventListener('input',()=>COURSE?refreshReadout():updateRouteInfo());
+
+/* ---------- Função: buscar cidade/local (Nominatim via backend) ---------- */
+async function searchPlace(){
+  const q=$('placeSearch').value.trim(); if(!q)return;
+  const btn=$('searchBtn'),old=btn.textContent; btn.disabled=true; btn.textContent='…';
+  try{
+    const r=await fetch('/api/geocode?q='+encodeURIComponent(q));
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'não encontrei');
+    map.setView([d.lat,d.lng],14);
+    $('err').style.display='none';
+  }catch(e){ showErr('Busca: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+$('searchBtn').addEventListener('click',searchPlace);
+$('placeSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchPlace();}});
+
+/* ---------- Função: clima previsto (Open-Meteo, sem chave) ---------- */
+let WEATHER=null;
+async function fetchWeather(lat,lng,dateStr){
+  const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}`
+    +`&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max`
+    +`&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
+  const r=await fetch(url); const d=await r.json();
+  const day=d&&d.daily;
+  if(!r.ok||!day||!day.temperature_2m_max||day.temperature_2m_max[0]==null) return null;
+  return {
+    tmin:Math.round(day.temperature_2m_min[0]),
+    tmax:Math.round(day.temperature_2m_max[0]),
+    rain:Math.round(day.precipitation_probability_max[0]||0),
+    wind:Math.round(day.wind_speed_10m_max[0]||0)
+  };
+}
+function renderWeather(w){
+  if(!w){ $('weatherCard').style.display='none'; return; }
+  let nota='Condições amenas — dá pra seguir a estratégia normal.';
+  if(w.tmax>=28) nota='Calor: largue mais conservador, capriche na hidratação e evite acelerar cedo.';
+  else if(w.wind>=25) nota='Vento forte: segure nos trechos contra o vento e aproveite o vento a favor.';
+  else if(w.rain>=60) nota='Chance alta de chuva: cuidado com piso escorregadio em curvas e descidas.';
+  $('weather').innerHTML=`<div class="wstats">
+      <div><b>${w.tmin}–${w.tmax}°C</b><span>temperatura</span></div>
+      <div><b>${w.wind} km/h</b><span>vento</span></div>
+      <div><b>${w.rain}%</b><span>chuva</span></div>
+    </div><div class="wnote">${nota}</div>`;
+  $('weatherCard').style.display='block';
+}
+
+/* ---------- Função: compartilhar/baixar o plano como imagem ---------- */
+async function sharePlan(){
+  const btn=$('share'),old=btn.textContent; btn.disabled=true; btn.textContent='Gerando imagem…';
+  try{
+    const canvas=await html2canvas($('out'),{backgroundColor:'#0E1116',scale:2,useCORS:true});
+    const blob=await new Promise(res=>canvas.toBlob(res,'image/png'));
+    const file=new File([blob],'plano-pacer.png',{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:'Meu plano de prova — Pacer',
+        text:'Montei meu plano de prova no Pacer 🏃'});
+    }else{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download='plano-pacer.png'; a.click();
+      URL.revokeObjectURL(url);
+    }
+  }catch(e){ showErr('Não consegui gerar a imagem: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+$('share').addEventListener('click',sharePlan);
+
+/* mostra estatísticas do percurso depois que o relevo é calculado */
+function loadCourseStats(course){
+  $('statsBox').style.display='flex';
+  countUp($('sDist'),course.distKm,{dec:1,suffix:'k'});
+  countUp($('sUp'),course.up,{prefix:'+',suffix:'m'});
+  countUp($('sDown'),course.down,{prefix:'−',suffix:'m'});
+  $('sMax').textContent='km '+course.hardest.km;
+  refreshReadout();
+}
+
+function showErr(m){$('err').textContent=m;$('err').style.display='block';}
+function mapError(m){
+  $('map').style.display='none';
+  const f=$('mapFallback'); f.style.display='grid'; f.textContent=m;
+}
+
+/* ===================================================================
+   AÇÃO PRINCIPAL: relevo (backend) -> núcleo -> IA (backend) -> render
+   =================================================================== */
+$('go').addEventListener('click',async()=>{
+  $('err').style.display='none';
+  if(path.length<2){showErr('Desenhe o trajeto no mapa: clique pelo menos 2 pontos.');return;}
+  const tgt=parseTime($('goal').value);
+  if(!tgt){showErr('Coloca o tempo alvo no formato mm:ss (ex: 50:00) ou h:mm:ss.');return;}
+
+  const btn=$('go');btn.disabled=true;btn.innerHTML='<span class="spin"></span>Lendo o relevo…';
+  try{
+    // 1) ELEVAÇÃO: manda os vértices pro backend, que chama a Elevation API
+    const linePoints=(routeCoords&&routeCoords.length>=2)?routeCoords:path; // segue as ruas se houver snap
+    const elRes=await fetch('/api/elevation',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({points:linePoints,samples:256})});
+    const elData=await elRes.json();
+    if(!elRes.ok) throw new Error(elData.error||'falha ao ler o relevo');
+
+    // 2) NÚCLEO REAPROVEITADO: mesmos pontos -> mesmo cálculo de antes
+    const pts=elData.points.map(p=>({lat:p.lat,lon:p.lng,ele:p.ele}));
+    COURSE=buildCourse(pts);
+    loadCourseStats(COURSE);
+
+    // 2b) CLIMA (opcional): se houver data, busca a previsão no ponto de partida
+    WEATHER=null; let weatherLine='', weatherRule='';
+    const dateStr=$('raceDate').value;
+    if(dateStr && path.length){
+      btn.innerHTML='<span class="spin"></span>Vendo o clima…';
+      try{ WEATHER=await fetchWeather(path[0].lat,path[0].lng,dateStr); }catch(e){ WEATHER=null; }
+    }
+    renderWeather(WEATHER);
+    if(WEATHER){
+      weatherLine=`\n- clima previsto no dia: ${WEATHER.tmin}–${WEATHER.tmax}°C, vento até ${WEATHER.wind} km/h, ${WEATHER.rain}% de chance de chuva`;
+      weatherRule=' Considere o clima previsto: calor pede largada mais conservadora e hidratação; vento e chuva pedem cautela em descidas e curvas.';
+    }
+
+    // 3) IA: monta o mesmo prompt do protótipo e chama o backend (Groq)
+    btn.innerHTML='<span class="spin"></span>Estudando a prova…';
+    const avg=fmtPace(tgt/COURSE.distKm);
+    const perKm=COURSE.perKm.map(s=>`km ${s.km}: ${s.gain>=0?'+':''}${s.gain}m (${s.grade.toFixed(1)}%)`).join('; ');
+    const prompt=
+`Você é um treinador experiente de corrida de rua. Vou te dar o perfil de altimetria de um percurso de prova e a meta do corredor. Monte a estratégia de prova. Responda APENAS com JSON válido, sem markdown nem cercas de código.
+
+Dados do percurso:
+- distância: ${COURSE.distKm.toFixed(1)} km
+- ganho de elevação total: ${COURSE.up} m; perda total: ${COURSE.down} m
+- trecho mais duro: km ${COURSE.hardest.km}
+- relevo por km: ${perKm}${weatherLine}
+
+Meta do corredor: terminar em ${$('goal').value} (pace médio ${avg}/km).
+
+Formato exato:
+{
+ "verdict":"uma frase de até 8 palavras com o caráter do percurso",
+ "raiox":"2 a 3 frases sobre como o relevo afeta a corrida e o maior risco",
+ "segmentos":[{"trecho":"km 0-3","pace":"5:05","instrucao":"frase curta"}],
+ "dicas":[{"tipo":"atacar","local":"km 8","texto":"frase curta"}]
+}
+Regras: distribua o pace de forma realista — mais lento nas subidas, mais rápido nas descidas — de modo que a MÉDIA bata a meta ${avg}/km. Use 4 a 6 segmentos cobrindo a prova inteira. tipo só "atacar" ou "segurar", 3 a 4 dicas, cada uma com "local" tipo "km X". Pace no formato m:ss. Seja conciso e direto.${weatherRule}`;
+
+    const planRes=await fetch('/api/plan',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({prompt})});
+    const planData=await planRes.json();
+    if(!planRes.ok) throw new Error(planData.error||'falha na IA');
+
+    let raw=(planData.text||'').replace(/```json|```/g,'').trim();
+    const obj=JSON.parse(raw.slice(raw.indexOf('{'),raw.lastIndexOf('}')+1));
+    LAST_PLAN=obj; LAST_AVG=avg;
+    render(obj,avg);
+    pushHistory();           // salva no histórico (nuvem ou local)
+    showToast('Plano de prova pronto e salvo ✓','ok');
+    $('out').style.display='flex';
+    $('out').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){
+    showErr('Não consegui montar o plano agora: '+e.message+'. Tenta de novo.');
+  }finally{
+    btn.disabled=false;btn.textContent='Montar meu plano de prova';
+  }
+});
+
+/* ===================================================================
+   BOOT: inicia o mapa (Leaflet já carregou via <script> no topo)
+   =================================================================== */
+(function bootMap(){
+  try{
+    if(typeof L==='undefined') throw new Error('biblioteca do mapa não carregou');
+    initMap();
+  }catch(e){
+    mapError('Mapa indisponível: '+e.message);
+  }
+})();
+
+/* ===================================================================
+   NAVEGAÇÃO POR ABAS
+   =================================================================== */
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+name));
+  document.querySelectorAll('.sidebar button').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
+  window.scrollTo({top:0,behavior:'smooth'});
+  // o Leaflet precisa recalcular o tamanho ao voltar pra aba do mapa
+  if(name==='plano'&&map) setTimeout(()=>map.invalidateSize(),60);
+  if(name==='hist') renderHistory();
+  if(name==='desafios') renderChallenges();
+  if(name==='calendario') renderCalendar();
+  if(name==='financas') renderFinance();
+  if(name==='playlist') renderPlaylist();
+}
+document.querySelectorAll('.sidebar button').forEach(b=>
+  b.addEventListener('click',()=>showView(b.dataset.view)));
+
+/* ---------- Calculadora de pace ---------- */
+function fmtTime(sec){
+  sec=Math.round(sec);
+  const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
+  return (h? h+':'+String(m).padStart(2,'0') : m)+':'+String(s).padStart(2,'0');
+}
+function num(v){ const n=parseFloat((v||'').replace(',','.')); return isNaN(n)?0:n; }
+function calcPaceA(){
+  const d=num($('caDist').value), t=parseTime($('caTime').value||'');
+  $('caOut').innerHTML = (d>0&&t)? 'pace: <b>'+fmtPace(t/d)+' /km</b>' : 'pace: <b>—</b>';
+}
+function calcTimeB(){
+  const d=num($('cbDist').value), p=parseTime($('cbPace').value||'');
+  $('cbOut').innerHTML = (d>0&&p)? 'tempo: <b>'+fmtTime(p*d)+'</b>' : 'tempo: <b>—</b>';
+}
+$('caDist').addEventListener('input',calcPaceA);
+$('caTime').addEventListener('input',calcPaceA);
+$('cbDist').addEventListener('input',calcTimeB);
+$('cbPace').addEventListener('input',calcTimeB);
+document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>{
+  $('caDist').value=b.dataset.d; calcPaceA();
+}));
+
+/* ===================================================================
+   ABA TREINO (IA gera plano de treino) + chips de seleção
+   =================================================================== */
+function setupChips(groupId){
+  document.querySelectorAll('#'+groupId+' .btn-ghost').forEach(b=>
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('#'+groupId+' .btn-ghost').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+    }));
+}
+['trDist','trLevel','trDays'].forEach(setupChips);
+function chipValue(groupId){
+  const on=document.querySelector('#'+groupId+' .btn-ghost.on');
+  return on?on.dataset.v:'';
+}
+function renderTraining(d){
+  let html=`<div class="card pad"><p class="raiox">${esc(d.visao||'')}</p></div>`;
+  (d.semanas||[]).forEach(w=>{
+    html+=`<div class="card pad"><p class="eyebrow">Semana ${esc(String(w.semana))} · ${esc(w.foco||'')}</p>`;
+    (w.sessoes||[]).forEach(s=>{
+      html+=`<div class="seg"><div class="trecho">${esc(s.dia)}</div><div class="ins">${esc(s.treino)}</div></div>`;
+    });
+    html+='</div>';
+  });
+  $('trOut').innerHTML=html;
+}
+$('trGo').addEventListener('click',async()=>{
+  $('trErr').style.display='none';
+  const dist=chipValue('trDist'), level=chipValue('trLevel'), days=chipValue('trDays');
+  const weeks=parseInt($('trWeeks').value,10);
+  if(!weeks||weeks<1||weeks>30){ $('trErr').textContent='Coloque um número de semanas entre 1 e 30.'; $('trErr').style.display='block'; return; }
+  const btn=$('trGo'); btn.disabled=true; btn.innerHTML='<span class="spin"></span>Montando o treino…';
+  const prompt=
+`Você é um treinador experiente de corrida de rua. Monte um plano de treino para uma prova de ${dist}, para um corredor ${level}, treinando ${days} dias por semana, ao longo de ${weeks} semanas até a prova. Responda APENAS com JSON válido, sem markdown nem cercas de código.
+
+Formato exato:
+{
+ "visao":"1 a 2 frases de visão geral do plano",
+ "semanas":[{"semana":1,"foco":"frase curta","sessoes":[{"dia":"Ter","treino":"frase curta"}]}]
+}
+Regras: cubra as ${weeks} semanas (no máximo 8 semanas detalhadas; se houver mais, agrupe blocos representativos). Exatamente ${days} sessões por semana. Inclua tipos variados (regenerativo, intervalado, ritmo, longão). A última semana deve ser de polimento (taper). Frases curtas e diretas.`;
+  try{
+    const r=await fetch('/api/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.error||'falha na IA');
+    let raw=(data.text||'').replace(/```json|```/g,'').trim();
+    const obj=JSON.parse(raw.slice(raw.indexOf('{'),raw.lastIndexOf('}')+1));
+    renderTraining(obj);
+    showToast('Plano de treino pronto ✓','ok');
+    $('trOut').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){
+    $('trErr').textContent='Não consegui montar o treino agora: '+e.message+'. Tenta de novo.';
+    $('trErr').style.display='block';
+  }finally{ btn.disabled=false; btn.textContent='Gerar plano de treino'; }
+});
+
+/* ===================================================================
+   ABA SALVOS + LOGIN (Supabase)
+   Nuvem quando logado; localStorage quando não.
+   =================================================================== */
+let LAST_PLAN=null, LAST_AVG='', SB=null, USER=null;
+const HKEY='pacer-history';
+function readHistory(){ try{return JSON.parse(localStorage.getItem(HKEY)||'[]');}catch(e){return [];} }
+function writeHistory(arr){ try{localStorage.setItem(HKEY,JSON.stringify(arr.slice(0,20)));}catch(e){} }
+
+/* --- Supabase: inicialização + login com Google --- */
+/* portão de login obrigatório na abertura */
+function showGate(){ $('authGate').classList.remove('hidden'); }
+function hideGate(){ $('authGate').classList.add('hidden'); }
+function showLoader(){ $('loader').classList.add('show'); }
+function hideLoader(){ $('loader').classList.remove('show'); }
+function reflectAuth(){
+  updateAuthUI();
+  if(USER) hideGate(); else showGate();
+  if($('view-hist').classList.contains('active')) renderHistory();
+}
+async function initSupabase(){
+  try{
+    const r=await fetch('/api/config'); const c=await r.json();
+    if(!r.ok||!c.supabaseUrl||!window.supabase){
+      $('gateNote').textContent='Login indisponível: configuração ausente.';
+      return;
+    }
+    SB=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    const { data:{ session } }=await SB.auth.getSession();
+    USER=(session&&session.user)||null;
+    SB.auth.onAuthStateChange((_e,sess)=>{ USER=(sess&&sess.user)||null; reflectAuth(); });
+    reflectAuth();
+    // acabou de voltar do login do Google -> mostra a animação de carregamento
+    if(USER){
+      let just=false; try{ just=sessionStorage.getItem('pacer-loggingin'); sessionStorage.removeItem('pacer-loggingin'); }catch(e){}
+      if(just){ $('loaderText').textContent='Bora correr…'; showLoader(); setTimeout(hideLoader,900); }
+    }
+  }catch(e){ $('gateNote').textContent='Erro ao iniciar o login. Recarregue a página.'; }
+}
+function firstName(){
+  const m=(USER&&USER.user_metadata)||{};
+  const full=(m.full_name||m.name||(USER&&USER.email)||'').trim();
+  const fn=full.split(/[\s@]/)[0];
+  return fn ? fn.charAt(0).toUpperCase()+fn.slice(1) : 'Atleta';
+}
+function updateAuthUI(){
+  const m=(USER&&USER.user_metadata)||{};
+  const av=m.avatar_url||m.picture||'';
+  if(USER && $('greet'))
+    $('greet').innerHTML=`Olá, Atleta <b>${esc(firstName())}</b>! Vamos correr? 🏃`;
+  if($('userEmail')) $('userEmail').textContent=(USER&&USER.email)||'Conectado';
+  if($('acctName')) $('acctName').textContent=USER?firstName():'';
+  if($('acctAvatar')&&av) $('acctAvatar').src=av;
+  if($('navAvatar')&&av) $('navAvatar').src=av;
+  if($('navName')) $('navName').textContent=USER?firstName():'Conta';
+}
+async function loginGoogle(){
+  if(!SB){ $('gateNote').textContent='Login indisponível agora. Recarregue a página.'; return; }
+  try{ sessionStorage.setItem('pacer-loggingin','1'); }catch(e){}
+  await SB.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin}});
+}
+async function logout(){
+  $('loaderText').textContent='Saindo…';
+  showLoader();
+  try{ if(SB) await SB.auth.signOut({scope:'local'}); }catch(e){}
+  USER=null; reflectAuth();          // mostra o portão de login atrás da animação
+  setTimeout(hideLoader,600);
+}
+$('logoutBtn').addEventListener('click',logout);
+$('gateLogin').addEventListener('click',loginGoogle);
+
+/* --- camada de dados: nuvem (logado) ou local --- */
+async function listPlans(){
+  if(USER&&SB){
+    const { data,error }=await SB.from('plans').select('*').order('created_at',{ascending:false});
+    if(error) return [];
+    return data.map(row=>({id:row.id,savedAt:row.created_at,goal:row.goal,avg:row.avg,
+      course:row.data&&row.data.course,plan:row.data&&row.data.plan,weather:row.data&&row.data.weather}));
+  }
+  return readHistory();
+}
+async function pushHistory(){
+  if(!COURSE||!LAST_PLAN) return;
+  const entry={goal:$('goal').value,avg:LAST_AVG,course:COURSE,plan:LAST_PLAN,weather:WEATHER};
+  if(USER&&SB){
+    try{ await SB.from('plans').insert({goal:entry.goal,avg:entry.avg,
+      dist:entry.course?entry.course.distKm:null,verdict:entry.plan?entry.plan.verdict:null,
+      data:{course:entry.course,plan:entry.plan,weather:entry.weather}}); return; }catch(e){}
+  }
+  const arr=readHistory(); arr.unshift(Object.assign({id:Date.now(),savedAt:new Date().toISOString()},entry)); writeHistory(arr);
+}
+async function delHistory(id){
+  if(USER&&SB){ try{ await SB.from('plans').delete().eq('id',id); }catch(e){} }
+  else { writeHistory(readHistory().filter(x=>String(x.id)!==String(id))); }
+  renderHistory();
+}
+async function openHistory(id){
+  const e=(await listPlans()).find(x=>String(x.id)===String(id)); if(!e)return;
+  COURSE=e.course; LAST_PLAN=e.plan; LAST_AVG=e.avg; WEATHER=e.weather||null;
+  $('goal').value=e.goal||'';
+  loadCourseStats(COURSE); renderWeather(WEATHER); render(e.plan,e.avg);
+  $('out').style.display='flex'; showView('plano');
+}
+async function renderHistory(){
+  const arr=await listPlans();
+  $('histEmpty').style.display=arr.length?'none':'block';
+  if(!arr.length) $('histEmpty').textContent='Nenhum plano salvo ainda. Gere um plano na aba Plano que ele aparece aqui.';
+  $('histList').innerHTML=arr.map(e=>{
+    const d=new Date(e.savedAt);
+    const dt=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const km=e.course&&e.course.distKm!=null?Number(e.course.distKm).toFixed(1):'?';
+    return `<div class="card pad histitem" data-open="${e.id}">
+      <div class="hrow"><div>
+        <div class="hverdict">${esc((e.plan&&e.plan.verdict)||'Plano de prova')}</div>
+        <div class="hmeta">${km} km · meta ${esc(e.goal||'')} · ${dt}</div>
+      </div><button class="hdel btn-ghost" data-del="${e.id}">apagar</button></div>
+    </div>`;
+  }).join('');
+}
+$('histList').addEventListener('click',ev=>{
+  const del=ev.target.closest('[data-del]');
+  if(del){ ev.stopPropagation(); delHistory(del.dataset.del); return; }
+  const item=ev.target.closest('[data-open]');
+  if(item) openHistory(item.dataset.open);
+});
+/* ===================================================================
+   DADOS GENÉRICOS NA CONTA (tabela user_items) — reusado pelas abas novas
+   =================================================================== */
+async function itemsList(kind){
+  if(!(USER&&SB)) return [];
+  const {data,error}=await SB.from('user_items').select('*').eq('kind',kind).order('created_at',{ascending:false});
+  return error?[]:data;
+}
+async function itemAdd(kind,data){
+  if(!(USER&&SB)) return null;
+  const {data:rows}=await SB.from('user_items').insert({kind,data}).select();
+  return rows&&rows[0];
+}
+async function itemUpdate(id,data){ if(USER&&SB) await SB.from('user_items').update({data}).eq('id',id); }
+async function itemDelete(id){ if(USER&&SB) await SB.from('user_items').delete().eq('id',id); }
+
+/* ---------- aba Playlist ---------- */
+async function renderPlaylist(){
+  const rows=await itemsList('song');
+  const songs=rows.map(r=>({id:r.id,...r.data}));
+  $('plCount').textContent = songs.length? '· '+songs.length+(songs.length>1?' músicas':' música') : '';
+  $('plList').innerHTML = songs.length? songs.map(s=>{
+    const safe=/^https?:\/\//i.test(s.url||'')? s.url : '';   // só aceita http(s)
+    return `<div class="card pad song">
+      <div class="song-info"><div class="song-title">${esc(s.title||'')}</div>
+        <div class="song-artist">${esc(s.artist||'—')}</div></div>
+      ${safe?`<a class="btn-ghost song-play" href="${esc(safe)}" target="_blank" rel="noopener">▶ ouvir</a>`:''}
+      <button class="hdel btn-ghost" data-del="${s.id}">×</button>
+    </div>`;
+  }).join('') : '<div class="card pad" style="text-align:center;color:var(--ink-soft);font-size:14px">Sua playlist está vazia. Adicione músicas que te dão gás. 🎧</div>';
+}
+$('plAdd').addEventListener('click',async()=>{
+  const title=$('plTitle').value.trim(), artist=$('plArtist').value.trim(), url=$('plUrl').value.trim();
+  if(!title){ showToast('Coloque ao menos o nome da música','err'); return; }
+  await itemAdd('song',{title,artist,url});
+  $('plTitle').value=''; $('plArtist').value=''; $('plUrl').value='';
+  showToast('Música adicionada ✓'); renderPlaylist();
+});
+$('plList').addEventListener('click',async ev=>{
+  const del=ev.target.closest('[data-del]');
+  if(del){ await itemDelete(del.dataset.del); showToast('Música removida'); renderPlaylist(); }
+});
+
+/* ---------- aba Finanças ---------- */
+const FIN_ICON={corrida:'🏃',suplementos:'💊','tênis':'👟',outros:'•'};
+function money(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+setupChips('finCat');
+async function renderFinance(){
+  const [budgetRows,expRows]=await Promise.all([itemsList('budget'),itemsList('expense')]);
+  const budget=budgetRows.length?Number(budgetRows[0].data.amount)||0:0;
+  const now=new Date(), ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const exps=expRows.map(r=>({id:r.id,...r.data})).filter(e=>(e.date||'').slice(0,7)===ym)
+    .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const total=exps.reduce((s,e)=>s+(Number(e.amount)||0),0);
+  $('finBudget').value = budget? String(budget).replace('.',',') : '';
+  const rest=budget-total, pct=budget>0?Math.min(100,Math.round(total/budget*100)):0, over=budget>0&&total>budget;
+  $('finSummary').innerHTML = (budget>0?`<div class="bar"><i data-pct="${pct}" style="width:0;background:${over?'var(--up)':'var(--accent)'}"></i></div>`:'')
+    + `<div class="fin-row"><span>Gasto no mês</span><b>${money(total)}</b></div>`
+    + (budget>0?`<div class="fin-row"><span>${over?'Estourou em':'Restante'}</span><b style="color:${over?'var(--up)':'var(--down)'}">${money(Math.abs(rest))}</b></div>`:'<div class="fin-row"><span>Defina um orçamento acima pra acompanhar o quanto sobra.</span></div>');
+  const cats=['corrida','suplementos','tênis','outros'], byCat={};
+  cats.forEach(c=>byCat[c]=0); exps.forEach(e=>{ byCat[e.category]=(byCat[e.category]||0)+(Number(e.amount)||0); });
+  $('finCats').innerHTML=cats.map(c=>`<div class="fin-cat"><span>${FIN_ICON[c]||''} ${c}</span><b>${money(byCat[c])}</b></div>`).join('');
+  $('finList').innerHTML = exps.length? exps.map(e=>{
+    const catLabel=(e.category==='outros'&&e.other)? e.other : (e.category||'');
+    return `<div class="card pad fin-exp">
+      <div><div class="fin-desc">${esc(e.desc||'Gasto')}</div>
+        <div class="fin-meta">${FIN_ICON[e.category]||''} ${esc(catLabel)} · ${e.date?new Date(e.date+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):''}</div></div>
+      <div class="fin-amt">${money(e.amount)}</div>
+      <button class="hdel btn-ghost" data-del="${e.id}">×</button>
+    </div>`;
+  }).join('') : '<div class="card pad" style="text-align:center;color:var(--ink-soft);font-size:14px">Nenhum gasto neste mês ainda.</div>';
+  requestAnimationFrame(()=>{ const b=$('finSummary').querySelector('.bar i[data-pct]'); if(b) b.style.width=b.dataset.pct+'%'; });
+}
+$('finBudgetSave').addEventListener('click',async()=>{
+  const amount=parseFloat(($('finBudget').value||'').replace(',','.'))||0;
+  const rows=await itemsList('budget');
+  if(rows.length) await itemUpdate(rows[0].id,{amount}); else await itemAdd('budget',{amount});
+  showToast('Orçamento salvo ✓'); renderFinance();
+});
+$('finCat').addEventListener('click',()=>{
+  $('finOtherWrap').style.display = chipValue('finCat')==='outros' ? 'block' : 'none';
+});
+$('finAdd').addEventListener('click',async()=>{
+  const desc=$('finDesc').value.trim();
+  const amount=parseFloat(($('finVal').value||'').replace(',','.'))||0;
+  const category=chipValue('finCat')||'outros';
+  if(!desc||!amount){ showToast('Preencha descrição e valor','err'); return; }
+  const other = category==='outros' ? $('finOther').value.trim() : '';
+  await itemAdd('expense',{desc,amount,category,other,date:new Date().toISOString().slice(0,10)});
+  $('finDesc').value=''; $('finVal').value=''; $('finOther').value='';
+  $('finOtherWrap').style.display='none';
+  showToast('Gasto adicionado ✓'); renderFinance();
+});
+$('finList').addEventListener('click',async ev=>{
+  const del=ev.target.closest('[data-del]');
+  if(del){ await itemDelete(del.dataset.del); showToast('Gasto removido'); renderFinance(); }
+});
+
+/* ---------- aba Calendário de provas ---------- */
+async function renderCalendar(){
+  const rows=await itemsList('race');
+  const races=rows.map(r=>({id:r.id,...r.data})).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!races.length){
+    $('calList').innerHTML='<div class="card pad" style="text-align:center;color:var(--ink-soft);font-size:14px">Nenhuma prova ainda. Adicione sua próxima prova acima. 🏁</div>';
+    return;
+  }
+  const today=new Date(); today.setHours(0,0,0,0);
+  $('calList').innerHTML=races.map(r=>{
+    const d=r.date?new Date(r.date+'T00:00:00'):null;
+    let cd='';
+    if(d){ const diff=Math.round((d-today)/86400000);
+      cd = diff>0?`faltam ${diff} dia${diff>1?'s':''}` : diff===0?'é hoje! 🎯' : `foi há ${-diff} dia${-diff>1?'s':''}`;
+    }
+    const dateStr=d?d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    return `<div class="card pad race">
+      <div class="race-head"><b>${esc(r.name||'Prova')}</b><button class="hdel btn-ghost" data-del="${r.id}">apagar</button></div>
+      <div class="race-meta">${dateStr}${r.dist?' · '+esc(String(r.dist))+' km':''}${r.local?' · '+esc(r.local):''}</div>
+      <div class="race-cd">${cd}</div>
+    </div>`;
+  }).join('');
+}
+$('calAdd').addEventListener('click',async()=>{
+  const name=$('calName').value.trim(), date=$('calDate').value;
+  const dist=$('calDist').value.trim(), local=$('calLocal').value.trim();
+  if(!name||!date){ showToast('Preencha nome e data da prova','err'); return; }
+  await itemAdd('race',{name,date,dist:dist?parseFloat(dist.replace(',','.')):null,local});
+  $('calName').value=''; $('calDist').value=''; $('calLocal').value=''; $('calDate').value='';
+  showToast('Prova adicionada ✓'); renderCalendar();
+});
+$('calList').addEventListener('click',async ev=>{
+  const del=ev.target.closest('[data-del]');
+  if(del){ await itemDelete(del.dataset.del); showToast('Prova removida'); renderCalendar(); }
+});
+
+/* ---------- pop-up de comemoração ---------- */
+function celebrate(title){
+  $('celebrateSub').textContent=title;
+  const cf=$('confetti'); cf.innerHTML='';
+  const colors=['#FFD23F','#FF5C49','#3FB6C9','#8A93A1','#FFDE6B'];
+  for(let i=0;i<28;i++){
+    const s=document.createElement('i');
+    s.style.left=(Math.random()*100)+'%';
+    s.style.background=colors[i%colors.length];
+    s.style.animationDelay=(Math.random()*.5)+'s';
+    s.style.animationDuration=(1.3+Math.random()*.8)+'s';
+    cf.appendChild(s);
+  }
+  $('celebrate').classList.add('show');
+}
+$('celebrateClose').addEventListener('click',()=>$('celebrate').classList.remove('show'));
+$('celebrate').addEventListener('click',e=>{ if(e.target.id==='celebrate') $('celebrate').classList.remove('show'); });
+
+/* ---------- aba Desafios ---------- */
+const CHALLENGES=[
+  {key:'100km_mes',title:'100 km no mês',goal:100,unit:'km'},
+  {key:'300km_ano',title:'300 km no ano',goal:300,unit:'km'},
+  {key:'5dias',title:'Correr 5 dias seguidos',goal:5,unit:'dias'},
+  {key:'velocidade',title:'Velocidade: 5 treinos de tiro',goal:5,unit:'treinos'},
+  {key:'10treinos',title:'10 treinos no mês',goal:10,unit:'treinos'}
+];
+async function renderChallenges(){
+  const accepted=await itemsList('challenge');
+  const map={}; accepted.forEach(r=>{ if(r.data&&r.data.key) map[r.data.key]={id:r.id,...r.data}; });
+  $('challList').innerHTML=CHALLENGES.map(c=>{
+    const a=map[c.key];
+    if(a){
+      const prog=Math.min(a.progress||0,c.goal), pct=Math.round(prog/c.goal*100), done=prog>=c.goal;
+      return `<div class="card pad chall">
+        <div class="chall-head"><b>${esc(c.title)}</b>${done?'<span class="chall-done">concluído ✓</span>':''}</div>
+        <div class="bar"><i data-pct="${pct}" style="width:0"></i></div>
+        <div class="chall-meta">${prog} / ${c.goal} ${esc(c.unit)} · ${pct}%</div>
+        <div class="chall-actions">
+          <input type="text" inputmode="decimal" class="chall-input" data-id="${a.id}" value="${prog}">
+          <button class="btn-ghost chall-save" data-id="${a.id}" data-goal="${c.goal}">salvar</button>
+          <button class="btn-ghost chall-del" data-id="${a.id}">remover</button>
+        </div></div>`;
+    }
+    return `<div class="card pad chall">
+      <div class="chall-head"><b>${esc(c.title)}</b></div>
+      <div class="chall-meta" style="margin-bottom:12px">Meta: ${c.goal} ${esc(c.unit)}</div>
+      <button class="btn-go chall-accept" data-key="${c.key}">Aceitar desafio</button>
+    </div>`;
+  }).join('');
+  requestAnimationFrame(()=>$('challList').querySelectorAll('.bar i[data-pct]').forEach(i=>i.style.width=i.dataset.pct+'%'));
+}
+$('challList').addEventListener('click',async ev=>{
+  const acc=ev.target.closest('.chall-accept');
+  if(acc){ const c=CHALLENGES.find(x=>x.key===acc.dataset.key);
+    await itemAdd('challenge',{key:c.key,title:c.title,goal:c.goal,unit:c.unit,progress:0});
+    showToast('Desafio aceito! 💪'); renderChallenges(); return; }
+  const sav=ev.target.closest('.chall-save');
+  if(sav){ const inp=$('challList').querySelector('.chall-input[data-id="'+sav.dataset.id+'"]');
+    const val=parseFloat((inp.value||'0').replace(',','.'))||0;
+    const goal=Number(sav.dataset.goal);
+    const row=(await itemsList('challenge')).find(r=>r.id===sav.dataset.id);
+    const was=(row&&row.data&&row.data.progress)||0;
+    await itemUpdate(sav.dataset.id,Object.assign({},row?row.data:{},{progress:val}));
+    renderChallenges();
+    if(val>=goal && was<goal) celebrate((row&&row.data&&row.data.title)||'Desafio');
+    else showToast('Progresso salvo ✓');
+    return; }
+  const del=ev.target.closest('.chall-del');
+  if(del){ await itemDelete(del.dataset.id); showToast('Desafio removido'); renderChallenges(); return; }
+});
+
+initSupabase();
+
+/* ---------- modo claro / escuro ---------- */
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  $('themeBtn').textContent = t==='light' ? '☀️' : '🌙';
+  try{ localStorage.setItem('pacer-theme',t); }catch(e){}
+}
+$('themeBtn').addEventListener('click',()=>{
+  const cur=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';
+  applyTheme(cur==='light'?'dark':'light');
+});
+applyTheme(document.documentElement.getAttribute('data-theme')==='light'?'light':'dark');
+
+/* registra o service worker do PWA */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>

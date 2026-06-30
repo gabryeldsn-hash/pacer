@@ -1,0 +1,412 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pacer — seu plano de prova</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E1116; --panel:#171B22; --panel-2:#1E232C; --line:#2A313C;
+    --ink:#F2F0EB; --ink-soft:#9AA3B0; --ink-dim:#646D7B;
+    --up:#FF5C49; --up-soft:#3A2320; --down:#3FB6C9; --flat:#8A93A1;
+    --accent:#FFD23F; --grid:#222932;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:30px 18px 80px}
+  .mono{font-family:'Space Mono',monospace}
+
+  header{display:flex;align-items:center;gap:13px;margin-bottom:5px}
+  .mark{width:34px;height:34px;flex:none;position:relative}
+  .logo{font-family:'Archivo';font-weight:900;font-size:30px;letter-spacing:-.03em;line-height:1}
+  .logo b{color:var(--accent)}
+  .tag{font-family:'Space Mono';font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-dim);margin-left:auto;text-align:right;line-height:1.4}
+  .sub{color:var(--ink-soft);font-size:14px;max-width:560px;margin:12px 0 24px;line-height:1.55}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px}
+  .pad{padding:20px}
+  .grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}}
+
+  .label{font-family:'Archivo';font-weight:700;font-size:14px;margin:0 0 3px}
+  .hint{color:var(--ink-soft);font-size:12.5px;margin:0 0 12px;line-height:1.4}
+
+  .drop{border:1.5px dashed var(--line);border-radius:12px;padding:18px;text-align:center;
+    cursor:pointer;transition:border-color .15s,background .15s;background:var(--panel-2)}
+  .drop:hover{border-color:var(--down);background:#1B2128}
+  .drop .big{font-family:'Archivo';font-weight:700;font-size:14px}
+  .drop .sm{color:var(--ink-dim);font-size:12px;margin-top:3px}
+  .drop.has{border-style:solid;border-color:var(--down)}
+  .drop .big.ok{color:var(--down)}
+
+  .field{margin-top:14px}
+  .field label{display:block;font-family:'Space Mono';font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+  input[type=text]{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+    padding:11px 13px;color:var(--ink);font-family:'Space Mono';font-size:16px;letter-spacing:.02em}
+  input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .pace-readout{font-family:'Space Mono';font-size:12.5px;color:var(--ink-soft);margin-top:7px}
+  .pace-readout b{color:var(--accent)}
+
+  button{font-family:'Archivo';font-weight:700;border-radius:11px;border:1px solid transparent;
+    cursor:pointer;transition:transform .06s,background .15s,opacity .15s}
+  button:active{transform:translateY(1px)}
+  .btn-go{width:100%;background:var(--accent);color:#1A1405;font-size:15px;padding:13px;margin-top:16px}
+  .btn-go:hover{background:#FFDE6B}
+  .btn-go:disabled{opacity:.5;cursor:wait}
+  .btn-ghost{background:var(--panel-2);color:var(--ink);border-color:var(--line);font-size:12.5px;padding:8px 13px}
+  .btn-ghost:hover{border-color:var(--down)}
+
+  .stats{display:flex;gap:0;margin-top:2px}
+  .stat{flex:1;text-align:center;padding:4px 0}
+  .stat .v{font-family:'Space Mono';font-weight:700;font-size:20px}
+  .stat .v.up{color:var(--up)} .stat .v.down{color:var(--down)}
+  .stat .k{font-size:10.5px;color:var(--ink-dim);letter-spacing:.1em;text-transform:uppercase;margin-top:2px;font-family:'Space Mono'}
+
+  #out{margin-top:18px;display:none;flex-direction:column;gap:14px}
+  .eyebrow{font-family:'Space Mono';font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-dim);font-weight:700;margin:0 0 10px}
+
+  /* profile */
+  .profile-wrap{position:relative}
+  svg.profile{width:100%;display:block;border-radius:10px;background:var(--panel-2)}
+  .legend{display:flex;gap:16px;margin-top:9px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-soft)}
+  .legend i{display:inline-block;width:11px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+
+  /* raio-x */
+  .raiox{font-size:15px;line-height:1.6}
+  .verdict{font-family:'Archivo';font-weight:800;font-size:22px;line-height:1.2;letter-spacing:-.01em;
+    margin:0 0 8px;color:var(--accent)}
+
+  /* segments table */
+  .seg{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+  .seg:first-child{border-top:none}
+  .seg .trecho{font-family:'Space Mono';font-weight:700;font-size:13px;width:88px;flex:none;color:var(--ink-soft)}
+  .seg .pace{font-family:'Space Mono';font-weight:700;font-size:17px;width:74px;flex:none}
+  .seg .ins{font-size:13.5px;color:var(--ink-soft);line-height:1.45}
+
+  /* dicas */
+  .dica{display:flex;gap:11px;padding:11px 0;border-top:1px solid var(--line)}
+  .dica:first-child{border-top:none}
+  .dica .ico{width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;
+    font-family:'Archivo';font-weight:800;font-size:15px}
+  .dica.atacar .ico{background:var(--up-soft);color:var(--up)}
+  .dica.segurar .ico{background:#15302F;color:var(--down)}
+  .dica .loc{font-family:'Space Mono';font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.08em}
+  .dica .tx{font-size:13.5px;line-height:1.45;margin-top:1px}
+
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(26,20,5,.3);
+    border-top-color:#1A1405;border-radius:50%;animation:rot .7s linear infinite;vertical-align:-2px;margin-right:8px}
+  @keyframes rot{to{transform:rotate(360deg)}}
+  .err{background:var(--up-soft);color:var(--up);border-radius:10px;padding:12px;font-size:13px;
+    display:none;margin-top:12px;line-height:1.5}
+  footer{margin-top:30px;color:var(--ink-dim);font-size:11.5px;text-align:center;line-height:1.6}
+  input[type=file]{display:none}
+</style>
+
+<div class="wrap">
+  <header>
+    <svg class="mark" viewBox="0 0 34 34" fill="none">
+      <path d="M2 24 L9 18 L14 21 L21 9 L26 14 L32 6" stroke="#FFD23F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="21" cy="9" r="3" fill="#FF5C49"/>
+    </svg>
+    <div class="logo">Pa<b>cer</b></div>
+    <div class="tag">plano de prova<br>km a km</div>
+  </header>
+  <p class="sub">Sobe o trajeto da prova e diz sua meta. O Pacer estuda o relevo e devolve o ritmo certo pra cada trecho — onde segurar nas subidas e onde atacar nas descidas pra não quebrar no fim.</p>
+
+  <div class="card pad">
+    <div class="grid2">
+      <div>
+        <p class="label">Trajeto da prova</p>
+        <p class="hint">Arquivo .gpx da prova (do site do evento, Strava, Garmin…).</p>
+        <label class="drop" id="drop" for="file">
+          <div class="big" id="dropBig">Escolher arquivo GPX</div>
+          <div class="sm" id="dropSm">ou toque em “usar percurso de exemplo”</div>
+        </label>
+        <input type="file" id="file" accept=".gpx">
+        <div style="margin-top:10px"><button class="btn-ghost" id="sample">Usar percurso de exemplo</button></div>
+      </div>
+      <div>
+        <p class="label">Sua meta</p>
+        <p class="hint">Tempo que você quer fazer na prova.</p>
+        <div class="field">
+          <label>Tempo alvo (mm:ss ou h:mm:ss)</label>
+          <input type="text" id="goal" value="50:00" inputmode="numeric">
+          <div class="pace-readout" id="paceRead">distância: <b id="distRead">—</b> · pace médio: <b id="avgRead">—</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats card" style="background:var(--panel-2);margin-top:16px;display:none" id="statsBox">
+      <div class="stat"><div class="v" id="sDist">—</div><div class="k">distância</div></div>
+      <div class="stat"><div class="v up" id="sUp">—</div><div class="k">ganho</div></div>
+      <div class="stat"><div class="v down" id="sDown">—</div><div class="k">perda</div></div>
+      <div class="stat"><div class="v" id="sMax">—</div><div class="k">trecho + duro</div></div>
+    </div>
+
+    <button class="btn-go" id="go">Montar meu plano de prova</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div id="out">
+    <div class="card pad">
+      <p class="eyebrow">Perfil do percurso</p>
+      <div class="profile-wrap"><svg class="profile" id="profile" viewBox="0 0 800 220" preserveAspectRatio="none"></svg></div>
+      <div class="legend">
+        <span><i style="background:var(--up)"></i>subida</span>
+        <span><i style="background:var(--down)"></i>descida</span>
+        <span><i style="background:var(--flat)"></i>plano</span>
+        <span><i style="background:var(--accent);width:8px;height:8px;border-radius:50%"></i>ponto-chave</span>
+      </div>
+    </div>
+
+    <div class="card pad">
+      <p class="eyebrow">Raio-x da prova</p>
+      <p class="verdict" id="verdict"></p>
+      <div class="raiox" id="raiox"></div>
+    </div>
+
+    <div class="card pad">
+      <p class="eyebrow">Pace por trecho · alvo <span id="alvoTxt" class="mono"></span></p>
+      <div id="segments"></div>
+    </div>
+
+    <div class="card pad">
+      <p class="eyebrow">Onde atacar e onde segurar</p>
+      <div id="dicas"></div>
+    </div>
+  </div>
+
+  <footer>Protótipo Pacer · perfil calculado do GPX · estratégia gerada por IA ao vivo.<br>O percurso de exemplo é ilustrativo. Suba o GPX real da sua prova pra um plano de verdade.</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let COURSE=null; // {pts:[{d(km),ele}], distKm, up, down, perKm:[{km,gain,grade}], hardest}
+
+/* ---------- GPX parse ---------- */
+function haversine(a,b){
+  const R=6371000,toR=x=>x*Math.PI/180;
+  const dLat=toR(b.lat-a.lat),dLon=toR(b.lon-a.lon);
+  const s=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+function parseGPX(text){
+  const doc=new DOMParser().parseFromString(text,'application/xml');
+  const nodes=[...doc.getElementsByTagName('trkpt')];
+  const raw=nodes.length?nodes:[...doc.getElementsByTagName('rtept')];
+  const pts=raw.map(n=>({
+    lat:parseFloat(n.getAttribute('lat')),
+    lon:parseFloat(n.getAttribute('lon')),
+    ele:parseFloat((n.getElementsByTagName('ele')[0]||{}).textContent||'0')
+  })).filter(p=>!isNaN(p.lat)&&!isNaN(p.lon));
+  if(pts.length<2) throw new Error('arquivo sem trajeto válido');
+  return buildCourse(pts);
+}
+function buildCourse(pts){
+  let cum=0; const out=[{d:0,ele:pts[0].ele}];
+  let up=0,down=0;
+  for(let i=1;i<pts.length;i++){
+    cum+=haversine(pts[i-1],pts[i]);
+    const de=pts[i].ele-pts[i-1].ele;
+    if(de>0)up+=de; else down+=-de;
+    out.push({d:cum/1000,ele:pts[i].ele});
+  }
+  const distKm=cum/1000;
+  // per-km grade
+  const perKm=[]; const nKm=Math.max(1,Math.round(distKm));
+  for(let k=0;k<nKm;k++){
+    const a=out.find(p=>p.d>=k)||out[0];
+    const b=[...out].reverse().find(p=>p.d<=k+1)||out[out.length-1];
+    const dist=(Math.min(k+1,distKm)-k)*1000;
+    const gain=b.ele-a.ele;
+    perKm.push({km:k+1,gain:Math.round(gain),grade:dist?(gain/dist*100):0});
+  }
+  const hardest=perKm.reduce((m,s)=>s.grade>m.grade?s:m,perKm[0]);
+  return {pts:out,distKm,up:Math.round(up),down:Math.round(down),perKm,hardest};
+}
+
+/* ---------- sample GPX (realistic 10k with a wall at km7) ---------- */
+function sampleGPX(){
+  // build plausible coords near Bahia, ~85m steps, with shaped elevation
+  let lat=-12.4500, lon=-38.7600, ele=42;
+  const N=124, body=['<?xml version="1.0"?><gpx><trk><name>Exemplo 10K</name><trkseg>'];
+  for(let i=0;i<N;i++){
+    const t=i/(N-1);            // 0..1 over the course (~10.5km)
+    // elevation shape: rolling start, big climb 0.62-0.80, fast descent to finish
+    let e=42
+      + 6*Math.sin(t*Math.PI*4)            // gentle rollers
+      + (t>0.62&&t<0.80 ? (t-0.62)/0.18*48 : 0)            // the wall +48m
+      + (t>=0.80 ? 48 - (t-0.80)/0.20*54 : 0);             // descent
+    ele=e;
+    lat+=0.00055; lon+=0.00060*(i%7<4?1:0.7);
+    body.push(`<trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><ele>${ele.toFixed(1)}</ele></trkpt>`);
+  }
+  body.push('</trkseg></trk></gpx>');
+  return body.join('');
+}
+
+/* ---------- elevation profile drawing ---------- */
+function drawProfile(course, keypoints){
+  const W=800,H=220,pad=14;
+  const eles=course.pts.map(p=>p.ele);
+  const minE=Math.min(...eles), maxE=Math.max(...eles), span=Math.max(1,maxE-minE);
+  const X=d=>pad+(d/course.distKm)*(W-2*pad);
+  const Y=e=>H-pad-((e-minE)/span)*(H-2*pad-16);
+  // grid
+  let g='';
+  for(let k=0;k<=Math.round(course.distKm);k++){
+    const x=X(k);
+    g+=`<line x1="${x}" y1="${pad}" x2="${x}" y2="${H-pad}" stroke="var(--grid)" stroke-width="1"/>`;
+    if(k%2===0) g+=`<text x="${x}" y="${H-3}" fill="var(--ink-dim)" font-size="10" font-family="Space Mono" text-anchor="middle">${k}</text>`;
+  }
+  // area
+  let area=`M ${X(0)} ${H-pad}`;
+  course.pts.forEach(p=>area+=` L ${X(p.d).toFixed(1)} ${Y(p.ele).toFixed(1)}`);
+  area+=` L ${X(course.distKm)} ${H-pad} Z`;
+  // colored top line per segment by grade
+  let lines='';
+  for(let i=1;i<course.pts.length;i++){
+    const a=course.pts[i-1],b=course.pts[i];
+    const dd=(b.d-a.d)*1000||1, gr=(b.ele-a.ele)/dd*100;
+    const col=gr>2?'var(--up)':gr<-2?'var(--down)':'var(--flat)';
+    lines+=`<line x1="${X(a.d).toFixed(1)}" y1="${Y(a.ele).toFixed(1)}" x2="${X(b.d).toFixed(1)}" y2="${Y(b.ele).toFixed(1)}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`;
+  }
+  // keypoint markers
+  let marks='';
+  (keypoints||[]).forEach(kp=>{
+    const near=course.pts.reduce((m,p)=>Math.abs(p.d-kp.km)<Math.abs(m.d-kp.km)?p:m,course.pts[0]);
+    const x=X(near.d),y=Y(near.ele);
+    marks+=`<line x1="${x}" y1="${pad}" x2="${x}" y2="${y}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 3" opacity=".6"/>
+            <circle cx="${x}" cy="${y}" r="4.5" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.5"/>`;
+  });
+  $('profile').innerHTML=
+    `<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+       <stop offset="0" stop-color="#FFD23F" stop-opacity=".16"/>
+       <stop offset="1" stop-color="#FFD23F" stop-opacity="0"/></linearGradient></defs>
+     ${g}<path d="${area}" fill="url(#ag)"/>${lines}${marks}`;
+}
+
+/* ---------- goal helpers ---------- */
+function parseTime(s){
+  const p=s.trim().split(':').map(Number);
+  if(p.some(isNaN)) return null;
+  if(p.length===2) return p[0]*60+p[1];
+  if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+  return null;
+}
+function fmtPace(secPerKm){
+  const m=Math.floor(secPerKm/60), s=Math.round(secPerKm%60);
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+function refreshReadout(){
+  if(!COURSE){$('distRead').textContent='—';$('avgRead').textContent='—';return;}
+  $('distRead').textContent=COURSE.distKm.toFixed(1)+' km';
+  const t=parseTime($('goal').value);
+  $('avgRead').textContent = t? fmtPace(t/COURSE.distKm)+' /km' : '—';
+}
+
+/* ---------- load course ---------- */
+function loadCourse(course,name){
+  COURSE=course;
+  $('drop').classList.add('has');
+  $('dropBig').textContent=name||'Percurso carregado';
+  $('dropBig').classList.add('ok');
+  $('dropSm').textContent=`${course.distKm.toFixed(1)} km · ${course.pts.length} pontos`;
+  $('statsBox').style.display='flex';
+  $('sDist').textContent=course.distKm.toFixed(1)+'k';
+  $('sUp').textContent='+'+course.up+'m';
+  $('sDown').textContent='−'+course.down+'m';
+  $('sMax').textContent='km '+course.hardest.km;
+  refreshReadout();
+}
+$('file').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{loadCourse(parseGPX(r.result),f.name);$('err').style.display='none';}
+    catch(err){showErr('Não consegui ler esse GPX: '+err.message);}};
+  r.readAsText(f);
+});
+$('sample').addEventListener('click',()=>loadCourse(buildCourse(parseGPXpts(sampleGPX())),'Percurso de exemplo · 10K'));
+function parseGPXpts(text){
+  const doc=new DOMParser().parseFromString(text,'application/xml');
+  return [...doc.getElementsByTagName('trkpt')].map(n=>({
+    lat:parseFloat(n.getAttribute('lat')),lon:parseFloat(n.getAttribute('lon')),
+    ele:parseFloat(n.getElementsByTagName('ele')[0].textContent)}));
+}
+$('goal').addEventListener('input',refreshReadout);
+function showErr(m){$('err').textContent=m;$('err').style.display='block';}
+
+/* ---------- AI call ---------- */
+async function callClaude(prompt){
+  const r=await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,
+      messages:[{role:"user",content:prompt}]})});
+  if(!r.ok) throw new Error("falha na IA ("+r.status+")");
+  const d=await r.json();
+  return d.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+}
+
+$('go').addEventListener('click',async()=>{
+  $('err').style.display='none';
+  if(!COURSE){showErr('Carrega um GPX ou usa o percurso de exemplo primeiro.');return;}
+  const tgt=parseTime($('goal').value);
+  if(!tgt){showErr('Coloca o tempo alvo no formato mm:ss (ex: 50:00) ou h:mm:ss.');return;}
+  const btn=$('go');btn.disabled=true;btn.innerHTML='<span class="spin"></span>Estudando a prova…';
+
+  const avg=fmtPace(tgt/COURSE.distKm);
+  const perKm=COURSE.perKm.map(s=>`km ${s.km}: ${s.gain>=0?'+':''}${s.gain}m (${s.grade.toFixed(1)}%)`).join('; ');
+  const prompt=
+`Você é um treinador experiente de corrida de rua. Vou te dar o perfil de altimetria de um percurso de prova e a meta do corredor. Monte a estratégia de prova. Responda APENAS com JSON válido, sem markdown nem cercas de código.
+
+Dados do percurso:
+- distância: ${COURSE.distKm.toFixed(1)} km
+- ganho de elevação total: ${COURSE.up} m; perda total: ${COURSE.down} m
+- trecho mais duro: km ${COURSE.hardest.km}
+- relevo por km: ${perKm}
+
+Meta do corredor: terminar em ${$('goal').value} (pace médio ${avg}/km).
+
+Formato exato:
+{
+ "verdict":"uma frase de até 8 palavras com o caráter do percurso",
+ "raiox":"2 a 3 frases sobre como o relevo afeta a corrida e o maior risco",
+ "segmentos":[{"trecho":"km 0-3","pace":"5:05","instrucao":"frase curta"}],
+ "dicas":[{"tipo":"atacar","local":"km 8","texto":"frase curta"}]
+}
+Regras: distribua o pace de forma realista — mais lento nas subidas, mais rápido nas descidas — de modo que a MÉDIA bata a meta ${avg}/km. Use 4 a 6 segmentos cobrindo a prova inteira. tipo só "atacar" ou "segurar", 3 a 4 dicas, cada uma com "local" tipo "km X". Pace no formato m:ss. Seja conciso e direto.`;
+
+  try{
+    let raw=await callClaude(prompt);
+    raw=raw.replace(/```json|```/g,'').trim();
+    const obj=JSON.parse(raw.slice(raw.indexOf('{'),raw.lastIndexOf('}')+1));
+    render(obj,avg);
+    $('out').style.display='flex';
+    $('out').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){showErr('Não consegui montar o plano agora: '+e.message+'. Tenta de novo.');}
+  finally{btn.disabled=false;btn.textContent='Montar meu plano de prova';}
+});
+
+function render(d,avg){
+  const kps=(d.dicas||[]).map(x=>({km:parseFloat((x.local||'').replace(/[^\d.]/g,''))||0}));
+  drawProfile(COURSE,kps);
+  $('verdict').textContent=d.verdict||'';
+  $('raiox').textContent=d.raiox||'';
+  $('alvoTxt').textContent=avg+'/km';
+  $('segments').innerHTML=(d.segmentos||[]).map(s=>
+    `<div class="seg"><div class="trecho">${esc(s.trecho)}</div>
+     <div class="pace">${esc(s.pace)}</div>
+     <div class="ins">${esc(s.instrucao)}</div></div>`).join('');
+  $('dicas').innerHTML=(d.dicas||[]).map(x=>{
+    const at=x.tipo==='atacar';
+    return `<div class="dica ${at?'atacar':'segurar'}">
+      <div class="ico">${at?'▲':'▼'}</div>
+      <div><div class="loc">${esc(x.local)} · ${at?'atacar':'segurar'}</div>
+      <div class="tx">${esc(x.texto)}</div></div></div>`;}).join('');
+}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+</script>

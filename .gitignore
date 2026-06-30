@@ -1,0 +1,12 @@
+# nunca commitar segredos
+.env
+.env.local
+.env*.local
+
+# dependências e build
+node_modules/
+.vercel/
+.DS_Store
+
+# servidor de teste local (não vai pro deploy)
+devserver.py

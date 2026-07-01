@@ -1299,7 +1299,7 @@ function updateAuthUI(){
 async function loginGoogle(){
   if(!SB){ $('gateNote').textContent='Login indisponível agora. Recarregue a página.'; return; }
   try{ sessionStorage.setItem('pacer-loggingin','1'); }catch(e){}
-  await SB.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin}});
+  await SB.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+'/app.html'}});
 }
 async function logout(){
   $('loaderText').textContent='Saindo…';

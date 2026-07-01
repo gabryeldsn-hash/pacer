@@ -189,14 +189,22 @@
   footer .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   footer .spacer{flex:1}
 
-  /* aviso discreto de instalação (só quando o botão não teria o que fazer) */
-  .itoast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);z-index:100;
-    max-width:min(92vw,430px);background:var(--panel);border:1px solid var(--line);border-radius:12px;
-    padding:13px 16px;font-size:13.5px;color:var(--ink);line-height:1.45;
-    box-shadow:0 14px 44px rgba(0,0,0,.45);opacity:0;pointer-events:none;
-    transition:opacity .3s ease,transform .3s ease}
-  .itoast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  .itoast b{color:var(--accent)}
+  /* modal de instalação (só quando não há instalador automático) */
+  .imodal{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:24px;
+    background:rgba(5,7,10,.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .imodal.show{display:flex;animation:imfade .25s ease}
+  @keyframes imfade{from{opacity:0}to{opacity:1}}
+  .imodal-card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:30px 26px;
+    max-width:340px;width:100%;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.5);
+    animation:impop .4s cubic-bezier(.2,1.3,.4,1) both}
+  @keyframes impop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+  .imodal-icon{width:66px;height:66px;margin:0 auto 16px;border-radius:16px;display:grid;place-items:center;
+    background:var(--panel-2);border:1px solid var(--line);color:var(--accent)}
+  .imodal-icon svg{width:34px;height:34px}
+  .imodal-card h3{font-family:'Archivo';font-weight:800;font-size:20px;margin:0 0 10px}
+  .imodal-card p{color:var(--ink-soft);font-size:14.5px;line-height:1.55;margin:0 0 22px}
+  .imodal-card p b{color:var(--accent)}
+  .imodal-card .btn{width:100%;justify-content:center}
 
   /* dica iOS */
   .ios-hint{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:24px;
@@ -473,7 +481,14 @@
   </div>
 </footer>
 
-<div id="installToast" class="itoast"></div>
+<div id="installModal" class="imodal">
+  <div class="imodal-card">
+    <div class="imodal-icon" id="imodalIcon"></div>
+    <h3 id="imodalTitle">Instalar o Pacer</h3>
+    <p id="imodalText"></p>
+    <button class="btn btn-primary" id="imodalClose">Entendi</button>
+  </div>
+</div>
 
 <script>
   /* PWA install — abre o instalador nativo na hora */
@@ -481,19 +496,30 @@
   window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; });
   window.addEventListener('appinstalled',()=>{ deferredPrompt=null; });
   function isStandalone(){ return matchMedia('(display-mode: standalone)').matches || navigator.standalone===true; }
-  let itoastTimer=null;
+  const ICON_SHARE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m8 7 4-4 4 4"/><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/></svg>';
+  const ICON_INSTALL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></svg>';
   function showInstallHint(){
-    const el=document.getElementById('installToast'); if(!el) return;
-    const ua=navigator.userAgent; let msg;
-    if(/iphone|ipad|ipod/i.test(ua))
-      msg='📲 No iPhone: toque em <b>Compartilhar</b> (□↑) e depois em <b>Adicionar à Tela de Início</b>.';
-    else if(/safari/i.test(ua) && !/chrome|chromium|crios|fxios|edg/i.test(ua))
-      msg='📲 No Safari (Mac): menu <b>Arquivo → Adicionar ao Dock</b>.';
-    else
-      msg='📲 Clique no ícone de <b>instalar</b> na barra de endereço, ou no menu do navegador → <b>Instalar Pacer</b>.';
-    el.innerHTML=msg; el.classList.add('show');
-    clearTimeout(itoastTimer); itoastTimer=setTimeout(()=>el.classList.remove('show'),7000);
+    const ua=navigator.userAgent; let icon,title,text;
+    if(/iphone|ipad|ipod/i.test(ua)){
+      icon=ICON_SHARE; title='Instalar no iPhone';
+      text='Toque no botão <b>Compartilhar</b> (este ícone) na barra do Safari e depois em <b>Adicionar à Tela de Início</b>.';
+    } else if(/safari/i.test(ua) && !/chrome|chromium|crios|fxios|edg/i.test(ua)){
+      icon=ICON_SHARE; title='Instalar no Safari';
+      text='Clique no botão <b>Compartilhar</b> (este ícone) na barra do Safari e depois em <b>Adicionar ao Dock</b>.';
+    } else {
+      icon=ICON_INSTALL; title='Instalar o Pacer';
+      text='Clique no ícone de <b>instalar</b> (parecido com este) na barra de endereço, ou no menu do navegador → <b>Instalar Pacer</b>.';
+    }
+    document.getElementById('imodalIcon').innerHTML=icon;
+    document.getElementById('imodalTitle').textContent=title;
+    document.getElementById('imodalText').innerHTML=text;
+    document.getElementById('installModal').classList.add('show');
   }
+  (function(){
+    const m=document.getElementById('installModal');
+    document.getElementById('imodalClose').addEventListener('click',()=>m.classList.remove('show'));
+    m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('show'); });
+  })();
   async function installApp(){
     if(isStandalone()){ location.href='/app.html'; return; }
     if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; return; }

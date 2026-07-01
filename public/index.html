@@ -189,6 +189,15 @@
   footer .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   footer .spacer{flex:1}
 
+  /* aviso discreto de instalação (só quando o botão não teria o que fazer) */
+  .itoast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);z-index:100;
+    max-width:min(92vw,430px);background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:13px 16px;font-size:13.5px;color:var(--ink);line-height:1.45;
+    box-shadow:0 14px 44px rgba(0,0,0,.45);opacity:0;pointer-events:none;
+    transition:opacity .3s ease,transform .3s ease}
+  .itoast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .itoast b{color:var(--accent)}
+
   /* dica iOS */
   .ios-hint{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:24px;
     background:rgba(5,7,10,.7);backdrop-filter:blur(8px)}
@@ -464,15 +473,32 @@
   </div>
 </footer>
 
+<div id="installToast" class="itoast"></div>
+
 <script>
   /* PWA install — abre o instalador nativo na hora */
   let deferredPrompt=null;
   window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; });
   window.addEventListener('appinstalled',()=>{ deferredPrompt=null; });
   function isStandalone(){ return matchMedia('(display-mode: standalone)').matches || navigator.standalone===true; }
+  let itoastTimer=null;
+  function showInstallHint(){
+    const el=document.getElementById('installToast'); if(!el) return;
+    const ua=navigator.userAgent; let msg;
+    if(/iphone|ipad|ipod/i.test(ua))
+      msg='📲 No iPhone: toque em <b>Compartilhar</b> (□↑) e depois em <b>Adicionar à Tela de Início</b>.';
+    else if(/safari/i.test(ua) && !/chrome|chromium|crios|fxios|edg/i.test(ua))
+      msg='📲 No Safari (Mac): menu <b>Arquivo → Adicionar ao Dock</b>.';
+    else
+      msg='📲 Clique no ícone de <b>instalar</b> na barra de endereço, ou no menu do navegador → <b>Instalar Pacer</b>.';
+    el.innerHTML=msg; el.classList.add('show');
+    clearTimeout(itoastTimer); itoastTimer=setTimeout(()=>el.classList.remove('show'),7000);
+  }
   async function installApp(){
     if(isStandalone()){ location.href='/app.html'; return; }
-    if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; }
+    if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; return; }
+    // só chega aqui se o botão "não faria nada" (Safari/iPhone etc.) -> aviso discreto
+    showInstallHint();
   }
   document.querySelectorAll('.install').forEach(b=>b.addEventListener('click',installApp));
 

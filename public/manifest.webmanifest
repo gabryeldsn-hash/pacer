@@ -1,5 +1,5 @@
 {
-  "name": "Pacer — plano de prova",
+  "name": "Pacer",
   "short_name": "Pacer",
   "description": "Desenhe o trajeto da prova e receba o pace ideal por trecho, ajustado ao relevo.",
   "start_url": "/app.html",

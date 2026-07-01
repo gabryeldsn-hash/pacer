@@ -2,7 +2,7 @@
 // Objetivo: tornar o app instalável e abrir rápido (casca em cache).
 // IMPORTANTE: as chamadas de API (/api/...) NUNCA são cacheadas — sempre vão à rede,
 // senão o relevo e a estratégia ficariam congelados.
-const CACHE = 'pacer-v33';
+const CACHE = 'pacer-v34';
 const SHELL = ['/', '/index.html', '/app.html', '/manifest.webmanifest', '/icons/icon.svg'];
 
 self.addEventListener('install', (e) => {

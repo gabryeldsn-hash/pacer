@@ -7,9 +7,14 @@
 <title>Pacer — seu plano de prova, km a km</title>
 <script>
   // Se está rodando como app instalado (standalone), pula a landing e abre o app.
-  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) {
-    location.replace('/app.html');
-  }
+  (function () {
+    function goApp() { if (!/\/app\.html$/.test(location.pathname)) location.replace('/app.html'); }
+    var mq = window.matchMedia('(display-mode: standalone)');
+    if (mq.matches || navigator.standalone === true) { goApp(); return; }
+    // se a janela virar "app" depois (abriu logo após instalar), salta na hora:
+    try { mq.addEventListener('change', function (e) { if (e.matches) goApp(); }); } catch (e) {}
+    window.addEventListener('appinstalled', goApp);
+  })();
 </script>
 <meta name="description" content="Desenhe o trajeto da prova, defina sua meta e o Pacer monta o ritmo ideal pra cada trecho — ajustado ao relevo. Treino, desafios e mais, no seu bolso.">
 <link rel="manifest" href="/manifest.webmanifest">
